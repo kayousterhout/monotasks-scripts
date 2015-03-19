@@ -29,4 +29,7 @@ plot "__NAME__" using 1:2 with l ls 1 title "xvdf Utilization",\
 "__NAME__" using 1:3 with l ls 2 title "xvda Utilization",\
 "__NAME__" using 1:4 with l ls 3 title "CPU Utilization",\
 "__NAME__" using 1:5 with l ls 4 title "Network Utilization (recv'd)",\
-"__NAME__" using 1:6 with l ls 5 title "Network Utilization (trans'd)"
+"__NAME__" using 1:6 with l ls 5 title "Network Utilization (trans'd)",\
+"__NAME__" using 1:7 with l ls 1 title "Compute Monotasks",\
+"__NAME__" using 1:8 with l ls 7 title "Macrotasks",\
+"__NAME__" using 1:9 with l ls 2 title "GC fraction"

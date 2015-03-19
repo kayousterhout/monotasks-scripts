@@ -39,6 +39,9 @@ def main():
       cpu_utilization["Total System Utilization"])
     network_utilization = json_data["Network Utilization"]
     bytes_received = network_utilization["Bytes Received Per Second"]
+    running_compute_monotasks = json_data["Running Compute Monotasks"] / 8.0
+    running_macrotasks = json_data["Running Macrotasks"] / 8.0
+    gc_fraction = json_data["Fraction GC Time"]
     if bytes_received == "NaN":
       continue
     bytes_transmitted = network_utilization["Bytes Transmitted Per Second"]
@@ -51,7 +54,10 @@ def main():
       xvdb_total_utilization,
       cpu_total / 8.0,
       bytes_received / 125000000.,
-      bytes_transmitted / 125000000.]
+      bytes_transmitted / 125000000.,
+      running_compute_monotasks,
+      running_macrotasks,
+      gc_fraction]
     write_data(out_file, data)
   out_file.close()
 
