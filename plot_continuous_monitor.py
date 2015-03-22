@@ -1,5 +1,6 @@
 import json
 import optparse
+import subprocess
 import sys
 
 def write_data(out_file, data):
@@ -7,19 +8,13 @@ def write_data(out_file, data):
   out_file.write("\t".join(stringified))
   out_file.write("\n")
 
-def main():
-  parser = optparse.OptionParser(usage="foo.py <log filename")
-  (opts, args) = parser.parse_args()
-  if len(args) != 1:
-    parser.print_help()
-    sys.exit(1)
-
-  filename = args[0]
+def plot_continuous_monitor(filename):
   out_filename = "%s_utilization" % filename
   out_file = open(out_filename, "w")
 
   # Write a plot file.
-  plot_file = open("%s_utilization.gp" % filename, "w")
+  plot_filename = "%s_utilization.gp" % filename
+  plot_file = open(plot_filename, "w")
   for line in open("plot_cdf_base.gp", "r"):
     new_line = line.replace("__NAME__", out_filename)
     plot_file.write(new_line)
@@ -27,7 +22,12 @@ def main():
  
   start = -1
   for (i, line) in enumerate(open(filename, "r")):
-    json_data = json.loads(line)
+    try:
+      json_data = json.loads(line)
+    except ValueError:
+      # This typically happens at the end of the file, which can get cutoff when the job stops.
+      print "Stopping parsing due to incomplete line"
+      break
     time = json_data["Current Time"]
     if start == -1:
       start = time
@@ -72,6 +72,19 @@ def main():
       outstanding_network_bytes / (1024 * 1024)]
     write_data(out_file, data)
   out_file.close()
+
+  subprocess.check_call("gnuplot %s" % plot_filename, shell=True)
+  subprocess.check_call("open %s_utilization.pdf" % filename, shell=True)
+
+def main():
+  parser = optparse.OptionParser(usage="foo.py <log filename")
+  (opts, args) = parser.parse_args()
+  if len(args) != 1:
+    parser.print_help()
+    sys.exit(1)
+
+  filename = args[0]
+  plot_continuous_monitor(filename)
 
 if __name__ == "__main__":
   main()

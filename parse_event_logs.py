@@ -6,8 +6,9 @@ from optparse import OptionParser
 import sys
 
 # Add the trace analysis scripts to the path.
+# This assumes that this git hub repo: https://github.com/kayousterhout/trace-analysis.git
+#   is located in the parent directory.
 sys.path.append("../trace-analysis/")
-import bdb_helper
 from job import Job
 
 def get_json(line): 
@@ -16,12 +17,9 @@ def get_json(line):
   return json.loads(line.strip("\n").replace("\n", "\\n"))
 
 class Analyzer:
-  def __init__(self, filename, parse_as_single_job=False, skip_first_query=False, is_bd_bench=False,
-               multi_user_tpcds=True):
+  def __init__(self, filename):
     self.filename = filename
     self.jobs = {}
-    if parse_as_single_job:
-      self.jobs[0] = Job("all jobs")
     # For each stage, jobs that rely on the stage.
     self.jobs_for_stage = {}
 
@@ -36,10 +34,6 @@ class Analyzer:
       print "Parsing file %s as JobLogger output" % filename
     f.seek(0)
 
-    # TODO: Pass this in, so it can be replaced for other types of queries.
-    if is_bd_bench:
-      bigdb_helper = bdb_helper.BigDataBenchmarkHelper(skip_first_query)
-
     for line in f:
       if self.is_json:
         try:
@@ -50,10 +44,7 @@ class Analyzer:
         event_type = json_data["Event"]
         if event_type == "SparkListenerJobStart":
           stage_ids = json_data["Stage IDs"]
-          if parse_as_single_job:
-            job_id = 0
-          else:
-            job_id = json_data["Job ID"]
+          job_id = json_data["Job ID"]
           # Avoid using "Stage Infos" here, which was added in 1.2.0.
           for stage_id in stage_ids:
             if not job_id:
@@ -77,7 +68,11 @@ class Analyzer:
     print "Finished reading input data:"
     for job_id, job in self.jobs.iteritems():
       job.initialize_job()
-      print "Job", job_id, " has stages: ", job.stages.keys()
+      job_tasks= job.all_tasks()
+      job_start_time = min([task.start_time for task in job_tasks])
+      job_finish_time = max([task.finish_time for task in job_tasks])
+      job_runtime = (job_finish_time - job_start_time) / 1000.0
+      print "Job", job_id, " has stages: ", job.stages.keys(), " and runtime", job_runtime
 
   def output_all_waterfalls(self):
     for job_id, job in self.jobs.iteritems():
@@ -154,7 +149,7 @@ class Analyzer:
     last_job = max(self.jobs.keys())
     print "Outputting data for last job with ID %s" % last_job
 
-   # Only output the data for the shuffle read of the last job.
+    # Only output the data for the shuffle read of the last job.
     for stage_id, stage in self.jobs[last_job].stages.iteritems():
       if not stage.has_shuffle_read():
         continue
@@ -315,22 +310,6 @@ def main(argv):
   parser.add_option(
       "-d", "--debug", action="store_true", default=False,
       help="Enable additional debug logging")
-  parser.add_option(
-      "-a", "--agg-results-filename",
-      help="File to which to output aggregate statistics")
-  parser.add_option(
-      "-w", "--waterfall-only", action="store_true", default=False,
-      help="Output only the visualization for each job (not other stats)")
-  parser.add_option(
-      "-s", "--parse-as-single-job", action="store_true", default=False,
-      help="Parse the log as a single job, resulting in a single waterfall plot that " +
-      "includes all tasks across all jobs")
-  parser.add_option(
-      "--skip-first-query", action="store_true", default=False,
-      help="Skip the first run of each query (assuming that query is warmup")
-  parser.add_option(
-      "--bdbench", action="store_true", default=False,
-      help="Treat the input as coming from the big data benchmark")
   (opts, args) = parser.parse_args()
   if len(args) != 1:
     parser.print_help()
@@ -344,9 +323,8 @@ def main(argv):
   if filename is None:
     parser.print_help()
     sys.exit(1)
-  agg_results_filename = opts.agg_results_filename
 
-  analyzer = Analyzer(filename, opts.parse_as_single_job, opts.skip_first_query, opts.bdbench)
+  analyzer = Analyzer(filename)
 
   analyzer.output_utilizations(filename)
 

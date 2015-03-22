@@ -2,6 +2,9 @@ from optparse import OptionParser
 import subprocess
 import sys
 
+import parse_event_logs
+import plot_continuous_monitor
+
 # Copy a file from a given host through scp, throwing an exception if scp fails.
 def scp_from(host, identity_file, username, remote_file, local_file):
   subprocess.check_call(
@@ -68,6 +71,13 @@ def main(argv):
     opts.username,
     continuous_monitor_filename,
     local_continuous_monitor_file)
+
+  print "Plotting continuous monitor"
+  plot_continuous_monitor.plot_continuous_monitor(local_continuous_monitor_file)
+
+  print "Parsing event logs"
+  analyzer = parse_event_logs.Analyzer(local_event_log_file)
+  analyzer.output_utilizations(local_event_log_file)
 
 
 if __name__ == "__main__":
