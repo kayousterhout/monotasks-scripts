@@ -35,6 +35,10 @@ def main(argv):
     parser.error("--executor-host must be specified")
   if not opts.driver_host:
     parser.error("--driver-host must be specified")
+  if not opts.identity_file:
+    parser.error("--identity-file must be specified")
+  if not opts.filename_prefix:
+    parser.error("--filename-prefix must be specified")
 
   # Copy the event log from the driver back to the local machine.
   ret = ssh_get_stdout(
