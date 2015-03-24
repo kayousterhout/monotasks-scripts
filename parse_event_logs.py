@@ -151,8 +151,6 @@ class Analyzer:
 
     # Only output the data for the shuffle read of the last job.
     for stage_id, stage in self.jobs[last_job].stages.iteritems():
-      if not stage.has_shuffle_read():
-        continue
       stage_runtime = (max([t.finish_time for t in stage.tasks]) -
         min([t.start_time for t in stage.tasks]))
       for task in stage.tasks:
