@@ -21,17 +21,24 @@ def plot_continuous_monitor(filename):
   plot_file.close()
  
   start = -1
+  at_beginning = True
   for (i, line) in enumerate(open(filename, "r")):
     try:
       json_data = json.loads(line)
     except ValueError:
       # This typically happens at the end of the file, which can get cutoff when the job stops.
       print "Stopping parsing due to incomplete line"
-      break
+      if not at_beginning:
+        break
+      else:
+        # There are some non-JSON lines at the beginning of the file.
+        print "Skipping non-JSON line at beginning of file: %s" % line
+        continue
+    at_beginning = False
     time = json_data["Current Time"]
     if start == -1:
       start = time
-    disk_utilization = json_data["Disk Utilization"]
+    disk_utilization = json_data["Disk Utilization"]["Device Name To Utilization"]
     xvdf_total_utilization = disk_utilization[0]["xvdf"]["Disk Utilization"]
     xvdb_total_utilization = disk_utilization[1]["xvdb"]["Disk Utilization"]
     cpu_utilization = json_data["Cpu Utilization"]

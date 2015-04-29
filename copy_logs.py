@@ -47,8 +47,8 @@ def main(argv):
     opts.username,
     "ls -t /tmp/spark-events | head -n 1")
   print ret
-  event_log_dir = ret.strip("\n").strip("\r")
-  event_log_filename = "/tmp/spark-events/%s/EVENT_LOG_1" % event_log_dir
+  event_log_relative_filename = ret.strip("\n").strip("\r")
+  event_log_filename = "/tmp/spark-events/%s" % event_log_relative_filename
   local_event_log_file = "%s_event_log" % opts.filename_prefix
   print ("Copying event log from file %s on host %s back to %s" %
     (event_log_filename, opts.driver_host, local_event_log_file))
@@ -60,12 +60,12 @@ def main(argv):
     local_event_log_file)
   
   # Copy the continuous monitor from the driver back to the local machine.
-  continuous_monitor_dir = ssh_get_stdout(
+  continuous_monitor_relative_filename = ssh_get_stdout(
     opts.executor_host,
     opts.identity_file,
     opts.username,
     "ls -t /tmp/ | grep continuous_monitor | head -n 1").strip("\n").strip("\r")
-  continuous_monitor_filename = "/tmp/%s/1" % continuous_monitor_dir
+  continuous_monitor_filename = "/tmp/%s" % continuous_monitor_relative_filename
   local_continuous_monitor_file = "%s_executor_monitor" % opts.filename_prefix
   print ("Copying continuous monitor from file %s on host %s back to %s" %
     (continuous_monitor_filename, opts.executor_host, local_continuous_monitor_file))
