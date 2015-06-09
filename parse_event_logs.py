@@ -1,8 +1,13 @@
+"""
+This file contains utilities to parse the JSON event log output by Spark.
+"""
+
 import collections
 import json
 import logging
 import numpy
 from optparse import OptionParser
+import shuffle_job_filterer
 import sys
 
 # Add the trace analysis scripts to the path.
@@ -17,7 +22,10 @@ def get_json(line):
   return json.loads(line.strip("\n").replace("\n", "\\n"))
 
 class Analyzer:
-  def __init__(self, filename):
+  def __init__(self, filename, job_filterer = lambda x: x):
+    """ The job_filterer function here accepts a dictionary mapping job ids to jobs, and returns
+    a new dictionary mapping job_ids to jobs. It can be used to filter out particular jobs from
+    the set of jobs that are analyzed. """
     self.filename = filename
     self.jobs = {}
     # For each stage, jobs that rely on the stage.
@@ -65,6 +73,8 @@ class Analyzer:
         # The file will only contain information for one job.
         self.jobs[0].add_event(line, False)
 
+    print "Filtering jobs based on passed in filter function"
+    self.jobs = job_filterer(self.jobs)
     print "Finished reading input data:"
     for job_id, job in self.jobs.iteritems():
       job.initialize_job()
@@ -135,6 +145,30 @@ class Analyzer:
     f.write("\n")
     f.close()
 
+  def write_box_whiskers_info(self, filename, data):
+    percentiles = [5, 25, 50, 75, 95]
+    f = open(filename, "w")
+    # Write the filename and 0 as a placeholder, to make it easier to generate a box/whiskers plot.
+    f.write("%s\t0\t" % filename)
+    for percentile in percentiles:
+      f.write("%f\t" % numpy.percentile(data, percentile))
+    f.write("\n")
+    f.close()
+
+  def output_load_balancing_badness(self, prefix):
+    print "Outputting information about load balancing"
+    load_balancing = []
+    for job_id, job in self.jobs.iteritems():
+      for stage_id, stage in job.stages.iteritems():
+        load_balancing.append(stage.load_balancing_badness())
+    print load_balancing
+
+    self.write_box_whiskers_info("%s_load_balancing_badness" % prefix, load_balancing)
+
+  def output_runtimes(self, prefix):
+    runtimes = [job.original_runtime() for (job_id, job) in self.jobs.iteritems()]
+    self.write_box_whiskers_info("%s_runtimes" % prefix, runtimes)
+
   def output_utilizations(self, prefix):
     print "Outputting utilizations"
     disk_utilizations = []
@@ -142,43 +176,41 @@ class Analyzer:
     process_user_cpu_utilizations = []
     cpu_utilizations = []
     network_utilizations = []
+    network_utilizations_recv_only = []
     network_utilizations_fetch_only = []
     task_runtimes = []
     # Divide by 8 to convert to bytes!
     NETWORK_BANDWIDTH_BPS = 1.0e9 / 8
-    last_job = max(self.jobs.keys())
-    print "Outputting data for last job with ID %s" % last_job
 
-    # Only output the data for the shuffle read of the last job.
-    for stage_id, stage in self.jobs[last_job].stages.iteritems():
-      stage_runtime = (max([t.finish_time for t in stage.tasks]) -
-        min([t.start_time for t in stage.tasks]))
-      for task in stage.tasks:
-        task_runtimes.append(task.runtime())
-        #print "Task %s" % task.task_id
-        cpu_utilizations.append((task.total_cpu_utilization / 8., task.runtime()))
-        process_user_cpu_utilizations.append((task.process_user_cpu_utilization / 8., task.runtime()))
-        for name, block_device_numbers in task.disk_utilization.iteritems():
-          if name in ["xvdb", "xvdf"]:
-            utilization = block_device_numbers[0]
-            disk_utilizations.append((utilization, task.runtime()))
-            effective_disk_throughput = 0
-            if utilization > 0:
-              effective_disk_throughput = ((block_device_numbers[1] + block_device_numbers[2]) /
-                utilization)
-            disk_throughputs.append((effective_disk_throughput, task.runtime()))
-        received_utilization = (task.network_bytes_received_ps /
-          NETWORK_BANDWIDTH_BPS, task.runtime())
-        network_utilizations.append(received_utilization)
-        transmitted_utilization = (task.network_bytes_transmitted_ps /
-          NETWORK_BANDWIDTH_BPS, task.runtime())
-        network_utilizations.append(transmitted_utilization)
-        if task.has_fetch:
-          network_utilizations_fetch_only.append(received_utilization)
-          network_utilizations_fetch_only.append(transmitted_utilization)
-  
-    stage_runtime_file = open("%s_%s" % (prefix, "stage_runtime"), "w")
-    stage_runtime_file.write("%s\n" % stage_runtime)
+    for job_id, job in self.jobs.iteritems():
+      print "Adding data for job %s" % job_id
+      for stage_id, stage in job.stages.iteritems():
+        stage_runtime = (max([t.finish_time for t in stage.tasks]) -
+          min([t.start_time for t in stage.tasks]))
+        for task in stage.tasks:
+          task_runtimes.append(task.runtime())
+          cpu_utilizations.append((task.total_cpu_utilization / 8., task.runtime()))
+          process_user_cpu_utilizations.append((task.process_user_cpu_utilization / 8., task.runtime()))
+          for name, block_device_numbers in task.disk_utilization.iteritems():
+            if name in ["xvdb", "xvdf"]:
+              utilization = block_device_numbers[0]
+              disk_utilizations.append((utilization, task.runtime()))
+              effective_disk_throughput = 0
+              if utilization > 0:
+                effective_disk_throughput = ((block_device_numbers[1] + block_device_numbers[2]) /
+                  utilization)
+              disk_throughputs.append((effective_disk_throughput, task.runtime()))
+          received_utilization = (task.network_bytes_received_ps /
+            NETWORK_BANDWIDTH_BPS, task.runtime())
+          network_utilizations.append(received_utilization)
+          transmitted_utilization = (task.network_bytes_transmitted_ps /
+            NETWORK_BANDWIDTH_BPS, task.runtime())
+          network_utilizations.append(transmitted_utilization)
+          network_utilizations_recv_only.append(received_utilization)
+          if task.has_fetch:
+            network_utilizations_fetch_only.append(received_utilization)
+            network_utilizations_fetch_only.append(transmitted_utilization)
+    
     self.write_summary_file(task_runtimes, "%s_%s" % (prefix, "task_runtimes"))
     self.__write_utilization_summary_file(
       disk_utilizations, "%s_%s" % (prefix, "disk_utilization"))
@@ -186,6 +218,8 @@ class Analyzer:
       disk_throughputs, "%s_%s" % (prefix, "disk_throughput"))
     self.__write_utilization_summary_file(
       network_utilizations, "%s_%s" % (prefix, "network_utilization"))
+    self.__write_utilization_summary_file(
+      network_utilizations_recv_only, "%s_%s" % (prefix, "network_utilization_recv"))
     if network_utilizations_fetch_only:
       self.__write_utilization_summary_file(
         network_utilizations_fetch_only,
@@ -322,9 +356,12 @@ def main(argv):
     parser.print_help()
     sys.exit(1)
 
-  analyzer = Analyzer(filename)
+  analyzer = Analyzer(filename, shuffle_job_filterer.filter)
 
   analyzer.output_utilizations(filename)
+  analyzer.output_load_balancing_badness(filename)
+  analyzer.output_runtimes(filename)
+  analyzer.output_all_waterfalls()
 
 if __name__ == "__main__":
   main(sys.argv[1:])

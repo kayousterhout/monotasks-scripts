@@ -1,8 +1,12 @@
+"""
+This file contains helper functions to copy logs from a remote Spark cluster.
+The main function expected to be used is copy_logs.
+"""
+
 from optparse import OptionParser
 import subprocess
 import sys
 
-import parse_event_logs
 import plot_continuous_monitor
 
 # Copy a file from a given host through scp, throwing an exception if scp fails.
@@ -17,7 +21,13 @@ def ssh_get_stdout(host, identity_file, username, command):
     (identity_file, username, host, command))
   return subprocess.check_output(ssh_command, shell=True)
 
-def main(argv):
+def copy_logs(argv):
+  """ Copies logs back from a Spark cluster.
+
+  This script copies the JSON event log and JSON continuous monitor back from a Spark
+  driver and Spark executor, respectively, to the local machine.  Returns a two-item
+  tuple with the name of the event log and the continuous monitor log.
+  """
   parser = OptionParser()
   parser.add_option(
     "-e", "--executor-host", help="Executor from which to copy continuous monitor")
@@ -79,10 +89,7 @@ def main(argv):
   print "Plotting continuous monitor"
   plot_continuous_monitor.plot_continuous_monitor(local_continuous_monitor_file)
 
-  print "Parsing event logs"
-  analyzer = parse_event_logs.Analyzer(local_event_log_file)
-  analyzer.output_utilizations(local_event_log_file)
-
+  return (local_event_log_file, local_continuous_monitor_file)
 
 if __name__ == "__main__":
-  main(sys.argv[1:])
+  copy_logs(sys.argv[1:])
