@@ -55,13 +55,9 @@ class Analyzer:
           job_id = json_data["Job ID"]
           # Avoid using "Stage Infos" here, which was added in 1.2.0.
           for stage_id in stage_ids:
-            if not job_id:
-              # An empty job ID signals that this isn't a job we care about.
+            if stage_id not in self.jobs_for_stage:
               self.jobs_for_stage[stage_id] = []
-            elif stage_id not in self.jobs_for_stage:
-              self.jobs_for_stage[stage_id] = [job_id]
-            else:
-              self.jobs_for_stage[stage_id].append(job_id)
+            self.jobs_for_stage[stage_id].append(job_id)
         elif event_type == "SparkListenerTaskEnd":
           stage_id = json_data["Stage ID"]
           # Add the event to all of the jobs that depend on the stage.
