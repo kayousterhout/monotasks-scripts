@@ -78,7 +78,9 @@ class Analyzer:
       job_start_time = min([task.start_time for task in job_tasks])
       job_finish_time = max([task.finish_time for task in job_tasks])
       job_runtime = (job_finish_time - job_start_time) / 1000.0
-      print "Job", job_id, " has stages: ", job.stages.keys(), " and runtime", job_runtime
+      stage_str = ["%s (%sm)" % (stage_id, stage.runtime() / 60000.0)
+        for (stage_id, stage) in job.stages.iteritems()]
+      print "Job", job_id, " has stages: ", stage_str, " and runtime", job_runtime
 
   def output_all_waterfalls(self):
     for job_id, job in self.jobs.iteritems():
