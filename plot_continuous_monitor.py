@@ -20,6 +20,14 @@ def plot_continuous_monitor(filename):
     utilization_plot_file.write(new_line)
   utilization_plot_file.close()
 
+  disk_plot_filename = "%s_disk_utilization.gp" % filename
+  disk_plot_file = open(disk_plot_filename, "w")
+  for line in open("plot_disk_utilization_base.gp", "r"):
+    new_line = line.replace("__OUT_FILENAME__", "%s_disk_utilization.pdf" % filename).replace(
+      "__NAME__", out_filename)
+    disk_plot_file.write(new_line)
+  disk_plot_file.close()
+
   monotasks_plot_filename = "%s_monotasks.gp" % filename
   monotasks_plot_file = open(monotasks_plot_filename, "w")
   for line in open("plot_monotasks_base.gp", "r"):
@@ -47,9 +55,16 @@ def plot_continuous_monitor(filename):
     if start == -1:
       start = time
     disk_utilization = json_data["Disk Utilization"]["Device Name To Utilization"]
-    xvdf_total_utilization = disk_utilization[0]["xvdf"]["Disk Utilization"]
-    xvdb_total_utilization = disk_utilization[1]["xvdb"]["Disk Utilization"]
+    xvdf_utilization = disk_utilization[0]["xvdf"]
+    xvdb_utilization = disk_utilization[1]["xvdb"]
+    xvdf_total_utilization = xvdf_utilization["Disk Utilization"]
+    xvdb_total_utilization = xvdb_utilization["Disk Utilization"]
+    xvdf_read_throughput = xvdf_utilization["Read Throughput"]
+    xvdf_write_throughput = xvdf_utilization["Write Throughput"]
+    xvdb_read_throughput = xvdb_utilization["Read Throughput"]
+    xvdb_write_throughput = xvdb_utilization["Write Throughput"]
     cpu_utilization = json_data["Cpu Utilization"]
+    cpu_system = cpu_utilization["Total System Utilization"]
     cpu_total = (cpu_utilization["Total User Utilization"] +
       cpu_utilization["Total System Utilization"])
     network_utilization = json_data["Network Utilization"]
@@ -79,6 +94,9 @@ def plot_continuous_monitor(filename):
     macrotasks_in_compute = 0
     if "Macrotasks In Compute" in json_data:
       macrotasks_in_compute = json_data["Macrotasks In Compute"]
+    macrotasks_in_disk = 0
+    if "Macrotasks In Disk" in json_data:
+      macrotasks_in_disk = json_data["Macrotasks In Disk"]
 
     data = [
       time - start,
@@ -92,7 +110,13 @@ def plot_continuous_monitor(filename):
       gc_fraction,
       outstanding_network_bytes / (1024 * 1024),
       macrotasks_in_network,
-      macrotasks_in_compute]
+      macrotasks_in_compute,
+      cpu_system / 8.0,
+      macrotasks_in_disk,
+      xvdf_read_throughput,
+      xvdf_write_throughput,
+      xvdb_read_throughput,
+      xvdb_write_throughput]
     write_data(out_file, data)
   out_file.close()
 
@@ -101,6 +125,9 @@ def plot_continuous_monitor(filename):
 
   subprocess.check_call("gnuplot %s" % monotasks_plot_filename, shell=True)
   subprocess.check_call("open %s_monotasks.pdf" % filename, shell=True)
+
+  subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
+  subprocess.check_call("open %s_disk_utilization.pdf" % filename, shell=True)
 
 def main():
   parser = optparse.OptionParser(usage="foo.py <log filename")

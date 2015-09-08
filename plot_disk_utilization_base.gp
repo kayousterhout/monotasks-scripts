@@ -20,17 +20,19 @@ set output "__OUT_FILENAME__"
 set style fill solid border -1
 set grid xtics
 set grid ytics
+set y2tics
 set xtics 100000
-set yrange [0:12]
+set yrange [0:1.2]
+set y2range [0:100000000]
 set key above
 
-set ylabel "# Running" offset 1
+set ylabel "Utilization" offset 1
+set y2label "Throughput"
 set xlabel "Time"
 
-plot "__NAME__" using 1:8 with l ls 1 title "Macrotasks",\
-"__NAME__" using 1:11 with l ls 2 title "Macrotasks in network",\
-"__NAME__" using 1:12 with l ls 3 title "Macrotasks in compute",\
-"__NAME__" using 1:14 with l ls 7 title "Macrotasks in disk",\
-"__NAME__" using 1:7 with l ls 5 title "Compute Monotasks", \
-"__NAME__" using 1:(8*$9) with l ls 6 title "GC fraction", \
-"__NAME__" using 1:10 with l ls 4 axes x1y2 title "Oustanding network bytes"
+plot "__NAME__" using 1:2 with l ls 2 title "Disk Utilization (disk 1)",\
+"__NAME__" using 1:3 with l ls 1 title "Disk Utilization (disk 2)",\
+"__NAME__" using 1:15 with l ls 3 title "Read Throughput (disk 1)" axes x1y2,\
+"__NAME__" using 1:17 with l ls 4 title "Read Throughput (disk 2)" axes x1y2,\
+"__NAME__" using 1:16 with l ls 6 title "Write Throughput (disk 1)" axes x1y2,\
+"__NAME__" using 1:18 with l ls 7 title "Write Throughput (disk 2)" axes x1y2
