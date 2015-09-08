@@ -8,4 +8,4 @@ def filter(all_jobs_dict):
       if len(stage.tasks) > 5:
         filtered_jobs.append((job_id, job))
         continue
-  return {k:v for (k,v) in filtered_jobs[-9:]}
+  return {k:v for (k,v) in filtered_jobs}
