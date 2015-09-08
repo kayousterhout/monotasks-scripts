@@ -136,6 +136,11 @@ class Analyzer:
         percentile_index += 1
         if percentile_index >= len(percentiles):
           break
+
+    utilizations = [x[0] for x in utilization_pairs]
+    weights = [x[1] for x in utilization_pairs]
+    weighted_average = numpy.average(utilizations, weights=weights)
+    output.append(weighted_average)
     f = open(filename, "w")
     f.write("\t".join([str(x) for x in output]))
     f.write("\n")
