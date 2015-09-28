@@ -21,7 +21,7 @@ set style fill solid border -1
 set grid xtics
 set grid ytics
 set y2tics
-set xtics 100000
+set xtics 1000000
 set yrange [0:1.2]
 set y2range [0:100000000]
 set key above
