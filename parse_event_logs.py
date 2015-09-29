@@ -143,13 +143,9 @@ class Analyzer:
             (task.process_system_cpu_utilization / 8., task.runtime()))
           for name, block_device_numbers in task.disk_utilization.iteritems():
             if name in ["xvdb", "xvdf"]:
-              utilization = block_device_numbers[0]
-              disk_utilizations.append((utilization, task.runtime()))
-              effective_disk_throughput = 0
-              if utilization > 0:
-                effective_disk_throughput = ((block_device_numbers[1] + block_device_numbers[2]) /
-                  utilization)
-              disk_throughputs.append((effective_disk_throughput, task.runtime()))
+              disk_utilizations.append((block_device_numbers[0], task.runtime()))
+              disk_throughputs.append(
+                (block_device_numbers[1] + block_device_numbers[2], task.runtime()))
           received_utilization = (task.network_bytes_received_ps /
             NETWORK_BANDWIDTH_BPS, task.runtime())
           network_utilizations.append(received_utilization)
