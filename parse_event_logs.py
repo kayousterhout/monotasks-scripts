@@ -121,6 +121,7 @@ class Analyzer:
     disk_utilizations = []
     disk_throughputs = []
     process_user_cpu_utilizations = []
+    process_system_cpu_utilizations = []
     cpu_utilizations = []
     network_utilizations = []
     network_utilizations_recv_only = []
@@ -136,7 +137,10 @@ class Analyzer:
         for task in stage.tasks:
           task_runtimes.append(task.runtime())
           cpu_utilizations.append((task.total_cpu_utilization / 8., task.runtime()))
-          process_user_cpu_utilizations.append((task.process_user_cpu_utilization / 8., task.runtime()))
+          process_user_cpu_utilizations.append(
+            (task.process_user_cpu_utilization / 8., task.runtime()))
+          process_system_cpu_utilizations.append(
+            (task.process_system_cpu_utilization / 8., task.runtime()))
           for name, block_device_numbers in task.disk_utilization.iteritems():
             if name in ["xvdb", "xvdf"]:
               utilization = block_device_numbers[0]
@@ -174,6 +178,8 @@ class Analyzer:
       cpu_utilizations, "%s_%s" % (prefix, "cpu_utilization"))
     self.__write_utilization_summary_file(
       process_user_cpu_utilizations, "%s_%s" % (prefix, "cpu_process_user_utilization"))
+    self.__write_utilization_summary_file(
+      process_system_cpu_utilizations, "%s_%s" % (prefix, "cpu_process_system_utilization"))
 
 def main(argv):
   parser = OptionParser(usage="parse_logs.py [options] <log filename>")
