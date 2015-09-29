@@ -1,5 +1,7 @@
+import inspect
 import json
 import optparse
+import os
 import subprocess
 import sys
 
@@ -12,17 +14,21 @@ def plot_continuous_monitor(filename):
   out_filename = "%s_utilization" % filename
   out_file = open(out_filename, "w")
 
+  # Get the location of the monotasks-scripts repository by getting the directory containing the
+  # file that is currently being executed.
+  scripts_dir = os.path.dirname(inspect.stack()[0][1])
+
   # Write plot files.
   utilization_plot_filename = "%s_utilization.gp" % filename
   utilization_plot_file = open(utilization_plot_filename, "w")
-  for line in open("plot_utilization_base.gp", "r"):
+  for line in open(os.path.join(scripts_dir, "plot_utilization_base.gp"), "r"):
     new_line = line.replace("__NAME__", out_filename)
     utilization_plot_file.write(new_line)
   utilization_plot_file.close()
 
   disk_plot_filename = "%s_disk_utilization.gp" % filename
   disk_plot_file = open(disk_plot_filename, "w")
-  for line in open("plot_disk_utilization_base.gp", "r"):
+  for line in open(os.path.join(scripts_dir, "plot_disk_utilization_base.gp"), "r"):
     new_line = line.replace("__OUT_FILENAME__", "%s_disk_utilization.pdf" % filename).replace(
       "__NAME__", out_filename)
     disk_plot_file.write(new_line)
@@ -30,12 +36,12 @@ def plot_continuous_monitor(filename):
 
   monotasks_plot_filename = "%s_monotasks.gp" % filename
   monotasks_plot_file = open(monotasks_plot_filename, "w")
-  for line in open("plot_monotasks_base.gp", "r"):
+  for line in open(os.path.join(scripts_dir, "plot_monotasks_base.gp"), "r"):
     new_line = line.replace("__OUT_FILENAME__", "%s_monotasks.pdf" % filename).replace(
       "__NAME__", out_filename)
     monotasks_plot_file.write(new_line)
   monotasks_plot_file.close()
- 
+
   start = -1
   at_beginning = True
   for (i, line) in enumerate(open(filename, "r")):
