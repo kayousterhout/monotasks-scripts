@@ -89,7 +89,7 @@ class Task:
     self.shuffle_mb_written = 0
     SHUFFLE_WRITE_METRICS_KEY = "Shuffle Write Metrics"
     if SHUFFLE_WRITE_METRICS_KEY in task_metrics:
-      shuffle_write_metrics = task_metrics[SHUFFLE_WRITE_METRICS_KEY] 
+      shuffle_write_metrics = task_metrics[SHUFFLE_WRITE_METRICS_KEY]
       # Convert to milliseconds (from nanoseconds).
       self.shuffle_write_time = shuffle_write_metrics["Shuffle Write Time"] / 1.0e6
       OPEN_TIME_KEY = "Shuffle Open Time"
@@ -123,7 +123,7 @@ class Task:
     OUTPUT_WRITE_KEY = "Output Write Blocked Nanos"
     if OUTPUT_WRITE_KEY in task_metrics:
       self.output_write_time = task_metrics[OUTPUT_WRITE_KEY] / 1.0e6
-   
+
     OUTPUT_BYTES_KEY = "Output Bytes"
     if OUTPUT_BYTES_KEY in task_metrics:
       self.output_mb = task_metrics[OUTPUT_BYTES_KEY] / 1048576.
@@ -152,7 +152,7 @@ class Task:
       return
 
     shuffle_read_metrics = task_metrics[SHUFFLE_READ_METRICS_KEY]
-      
+
     self.fetch_wait = shuffle_read_metrics["Fetch Wait Time"]
     self.local_blocks_read = shuffle_read_metrics["Local Blocks Fetched"]
     self.remote_blocks_read = shuffle_read_metrics["Remote Blocks Fetched"]
@@ -186,7 +186,7 @@ class Task:
              (self.start_time, self.local_read_time,
               self.fetch_wait, self.compute_time(), self.gc_time,
               self.shuffle_write_time, self.result_serialization_time, self.finish_time - base,
-              self.local_mb_read + self.remote_mb_read, self.input_mb)) 
+              self.local_mb_read + self.remote_mb_read, self.input_mb))
     else:
       desc = (("Start time: %s, finish: %s, scheduler delay: %s, input read time: %s, " +
         "gc time: %s, shuffle write time: %s") %
@@ -199,4 +199,3 @@ class Task:
 
   def runtime(self):
     return self.finish_time - self.start_time
-

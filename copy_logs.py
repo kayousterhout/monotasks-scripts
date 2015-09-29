@@ -68,7 +68,7 @@ def copy_logs(argv):
     opts.username,
     event_log_filename,
     local_event_log_file)
-  
+
   # Copy the continuous monitor from the driver back to the local machine.
   continuous_monitor_relative_filename = ssh_get_stdout(
     opts.executor_host,

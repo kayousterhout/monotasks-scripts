@@ -37,7 +37,7 @@ class Stage:
       if task.runtime() > max_runtime:
         max_runtime = task.runtime()
         max_index = i
-    return "%s\n    Longest Task: %s" % (self, self.tasks[i])    
+    return "%s\n    Longest Task: %s" % (self, self.tasks[i])
 
   def load_balancing_badness(self):
     executor_id_to_tasks = {}
@@ -71,7 +71,7 @@ class Stage:
 
   def input_mb(self):
     """ Returns the total input size for this stage.
-    
+
     This is only valid if the stage read data from a shuffle.
     """
     total_input_bytes = sum([t.remote_mb_read + t.local_mb_read for t in self.tasks if t.has_fetch])
@@ -96,7 +96,3 @@ class Stage:
       self.start_time = min(self.start_time, task.start_time)
 
     self.tasks.append(task)
-
-
-
-

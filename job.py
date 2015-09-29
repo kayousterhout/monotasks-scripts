@@ -9,7 +9,7 @@ class Job:
     self.logger = logging.getLogger("Job")
     # Map of stage IDs to Stages.
     self.stages = collections.defaultdict(stage.Stage)
-  
+
   def add_event(self, data):
     event_type = data["Event"]
     if event_type == "SparkListenerTaskEnd":
@@ -63,4 +63,3 @@ class Job:
 
     f.write("%s\t%s\t%s\n" % (query_id, last_stage_runtime, self.original_runtime()))
     f.close()
-

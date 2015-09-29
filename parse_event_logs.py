@@ -12,7 +12,7 @@ import sys
 
 from job import Job
 
-def get_json(line): 
+def get_json(line):
   # Need to first strip the trailing newline, and then escape newlines (which can appear
   # in the middle of some of the JSON) so that JSON library doesn't barf.
   return json.loads(line.strip("\n").replace("\n", "\\n"))
@@ -73,7 +73,7 @@ class Analyzer:
     summary_file.close()
 
   def __write_utilization_summary_file(self, utilization_pairs, filename):
-    utilization_pairs.sort() 
+    utilization_pairs.sort()
     current_total_runtime = 0
     percentiles = [0.05, 0.25, 0.5, 0.75, 0.95, 0.99]
     output = []
@@ -156,7 +156,7 @@ class Analyzer:
           if task.has_fetch:
             network_utilizations_fetch_only.append(received_utilization)
             network_utilizations_fetch_only.append(transmitted_utilization)
-    
+
     self.write_summary_file(task_runtimes, "%s_%s" % (prefix, "task_runtimes"))
     self.__write_utilization_summary_file(
       disk_utilizations, "%s_%s" % (prefix, "disk_utilization"))
@@ -184,7 +184,7 @@ def main(argv):
   if len(args) != 1:
     parser.print_help()
     sys.exit(1)
- 
+
   if opts.debug:
     logging.basicConfig(level=logging.DEBUG)
   else:
