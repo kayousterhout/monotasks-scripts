@@ -79,6 +79,15 @@ def plot_continuous_monitor(filename):
     if "Running Compute Monotasks" in json_data:
       running_compute_monotasks = json_data["Running Compute Monotasks"]
     running_macrotasks = 0
+
+    # Parse the number of currently running disk monotasks for each disk.
+    # xvdf is mounted on /mnt2 and xvdb on /mnt (the indexing below will need to be updated
+    # if we use different instance types).
+    running_disk_monotasks_info = json_data["Running Disk Monotasks"]
+    RUNNING_MONOTASKS_KEY = "Running And Queued Monotasks"
+    xvdf_running_disk_monotasks = running_disk_monotasks_info[0][RUNNING_MONOTASKS_KEY]
+    xvdb_running_disk_monotasks = running_disk_monotasks_info[1][RUNNING_MONOTASKS_KEY]
+
     if "Running Macrotasks" in json_data:
       running_macrotasks = json_data["Running Macrotasks"]
     gc_fraction = 0
@@ -122,7 +131,9 @@ def plot_continuous_monitor(filename):
       xvdf_read_throughput,
       xvdf_write_throughput,
       xvdb_read_throughput,
-      xvdb_write_throughput]
+      xvdb_write_throughput,
+      xvdf_running_disk_monotasks,
+      xvdb_running_disk_monotasks]
     write_data(out_file, data)
   out_file.close()
 
