@@ -1,6 +1,5 @@
 import inspect
 import json
-import optparse
 import os
 import subprocess
 import sys
@@ -10,7 +9,7 @@ def write_data(out_file, data):
   out_file.write("\t".join(stringified))
   out_file.write("\n")
 
-def plot_continuous_monitor(filename):
+def plot_continuous_monitor(filename, open_graphs=False):
   out_filename = "%s_utilization" % filename
   out_file = open(out_filename, "w")
 
@@ -138,23 +137,30 @@ def plot_continuous_monitor(filename):
   out_file.close()
 
   subprocess.check_call("gnuplot %s" % utilization_plot_filename, shell=True)
-  subprocess.check_call("open %s_utilization.pdf" % filename, shell=True)
-
   subprocess.check_call("gnuplot %s" % monotasks_plot_filename, shell=True)
-  subprocess.check_call("open %s_monotasks.pdf" % filename, shell=True)
-
   subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
-  subprocess.check_call("open %s_disk_utilization.pdf" % filename, shell=True)
+
+  if (open_graphs):
+    subprocess.check_call("open %s_utilization.pdf" % filename, shell=True)
+    subprocess.check_call("open %s_monotasks.pdf" % filename, shell=True)
+    subprocess.check_call("open %s_disk_utilization.pdf" % filename, shell=True)
+
+def parse_args():
+  parser = argparse.ArgumentParser(description="Plots Spark continuous monitor logs.")
+  parser.add_argument(
+    "-f", "--filename", help="The path to a continuous monitor log file.", required=True)
+  parser.add_argument(
+    "-o",
+    "--open-graphs",
+    action="store_true",
+    default=False,
+    dest="open_graphs",
+    help="Whether to open the resulting graph PDFs.")
+  return parser.parse_args()
 
 def main():
-  parser = optparse.OptionParser(usage="foo.py <log filename")
-  (opts, args) = parser.parse_args()
-  if len(args) != 1:
-    parser.print_help()
-    sys.exit(1)
-
-  filename = args[0]
-  plot_continuous_monitor(filename)
+  args = parse_args()
+  plot_continuous_monitor(args.filename, args.open_graphs)
 
 if __name__ == "__main__":
   main()
