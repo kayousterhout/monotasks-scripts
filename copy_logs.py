@@ -19,7 +19,7 @@ def ssh_get_stdout(host, identity_file, username, command):
   command = "source /root/.bash_profile; %s" % command
   ssh_command = ("ssh -t -o StrictHostKeyChecking=no -i %s %s@%s '%s'" %
     (identity_file, username, host, command))
-  return subprocess.check_output(ssh_command, shell=True)
+  return subprocess.Popen(ssh_command, stdout=subprocess.PIPE, shell=True).communicate()[0]
 
 def copy_logs(argv):
   """ Copies logs back from a Spark cluster.
