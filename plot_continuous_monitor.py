@@ -86,8 +86,10 @@ def plot_continuous_monitor(filename, open_graphs=False):
       # types).
       running_disk_monotasks_info = json_data["Running Disk Monotasks"]
       RUNNING_MONOTASKS_KEY = "Running And Queued Monotasks"
-      xvdf_running_disk_monotasks = running_disk_monotasks_info[0][RUNNING_MONOTASKS_KEY]
-      xvdb_running_disk_monotasks = running_disk_monotasks_info[1][RUNNING_MONOTASKS_KEY]
+      if (len(running_disk_monotasks_info) > 0):
+        xvdf_running_disk_monotasks = running_disk_monotasks_info[0][RUNNING_MONOTASKS_KEY]
+        if (len(running_disk_monotasks_info) > 1):
+          xvdb_running_disk_monotasks = running_disk_monotasks_info[1][RUNNING_MONOTASKS_KEY]
     running_macrotasks = 0
     if "Running Macrotasks" in json_data:
       running_macrotasks = json_data["Running Macrotasks"]
