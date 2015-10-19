@@ -6,20 +6,9 @@ The main function expected to be used is copy_logs.
 from optparse import OptionParser
 import subprocess
 import sys
+import utils
 
 import plot_continuous_monitor
-
-# Copy a file from a given host through scp, throwing an exception if scp fails.
-def scp_from(host, identity_file, username, remote_file, local_file):
-  subprocess.check_call(
-    "scp -q -o StrictHostKeyChecking=no -i %s '%s@%s:%s' '%s'" %
-    (identity_file, username, host, remote_file, local_file), shell=True)
-
-def ssh_get_stdout(host, identity_file, username, command):
-  command = "source /root/.bash_profile; %s" % command
-  ssh_command = ("ssh -t -o StrictHostKeyChecking=no -i %s %s@%s '%s'" %
-    (identity_file, username, host, command))
-  return subprocess.Popen(ssh_command, stdout=subprocess.PIPE, shell=True).communicate()[0]
 
 def copy_logs(argv):
   """ Copies logs back from a Spark cluster.
@@ -51,7 +40,7 @@ def copy_logs(argv):
     parser.error("--filename-prefix must be specified")
 
   # Copy the event log from the driver back to the local machine.
-  ret = ssh_get_stdout(
+  ret = utils.ssh_get_stdout(
     opts.driver_host,
     opts.identity_file,
     opts.username,
@@ -62,7 +51,7 @@ def copy_logs(argv):
   local_event_log_file = "%s_event_log" % opts.filename_prefix
   print ("Copying event log from file %s on host %s back to %s" %
     (event_log_filename, opts.driver_host, local_event_log_file))
-  scp_from(
+  utils.scp_from(
     opts.driver_host,
     opts.identity_file,
     opts.username,
@@ -70,24 +59,11 @@ def copy_logs(argv):
     local_event_log_file)
 
   # Copy the continuous monitor from the driver back to the local machine.
-  continuous_monitor_relative_filename = ssh_get_stdout(
+  local_continuous_monitor_file = utils.copy_latest_continuous_monitor(
     opts.executor_host,
     opts.identity_file,
-    opts.username,
-    "ls -t /tmp/ | grep continuous_monitor | head -n 1").strip("\n").strip("\r")
-  continuous_monitor_filename = "/tmp/%s" % continuous_monitor_relative_filename
-  local_continuous_monitor_file = "%s_executor_monitor" % opts.filename_prefix
-  print ("Copying continuous monitor from file %s on host %s back to %s" %
-    (continuous_monitor_filename, opts.executor_host, local_continuous_monitor_file))
-  scp_from(
-    opts.executor_host,
-    opts.identity_file,
-    opts.username,
-    continuous_monitor_filename,
-    local_continuous_monitor_file)
-
-  print "Plotting continuous monitor"
-  plot_continuous_monitor.plot_continuous_monitor(local_continuous_monitor_file)
+    opts.filename_prefix,
+    opts.username)
 
   return (local_event_log_file, local_continuous_monitor_file)
 
