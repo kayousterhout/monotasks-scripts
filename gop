@@ -1,0 +1,2 @@
+gnuplot $1.gp
+open $1.pdf
