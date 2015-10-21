@@ -95,6 +95,7 @@ class Analyzer:
     weighted_average = numpy.average(utilizations, weights=weights)
     output.append(weighted_average)
     f = open(filename, "w")
+    f.write("Utilization\t0\t")
     f.write("\t".join([str(x) for x in output]))
     f.write("\n")
     f.close()
