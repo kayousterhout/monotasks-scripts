@@ -10,6 +10,31 @@ def write_data(out_file, data):
   out_file.write("\t".join(stringified))
   out_file.write("\n")
 
+def plot_single_disk(filename, utilization_filename, disk_to_plot, disks_to_skip, scripts_dir):
+  """
+  Plots the utilization for a single disk, ignoring the utilization for any disks in
+  disks_to_skip.
+  """
+  disk_plot_filename_prefix = "%s_%s_disk_utilization" % (filename, disk_to_plot)
+  disk_plot_filename = "%s.gp" % disk_plot_filename_prefix
+  disk_plot_output = "%s.pdf" % disk_plot_filename_prefix
+  disk_plot_file = open(disk_plot_filename, "w")
+  for line in open(os.path.join(scripts_dir, "plot_disk_utilization_base.gp"), "r"):
+    skip = False
+    for disk_to_skip in disks_to_skip:
+      if line.find(disk_to_skip) != -1:
+        skip = True
+    if not skip:
+      new_line = line.replace("__OUT_FILENAME__", disk_plot_output).replace(
+        "__NAME__", utilization_filename)
+      disk_plot_file.write(new_line)
+  disk_plot_file.close()
+
+  print "Calling gnuplot with %s" % disk_plot_filename
+  subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
+
+  return disk_plot_output
+
 def plot_continuous_monitor(filename, open_graphs=False):
   out_filename = "%s_utilization" % filename
   out_file = open(out_filename, "w")
@@ -17,30 +42,6 @@ def plot_continuous_monitor(filename, open_graphs=False):
   # Get the location of the monotasks-scripts repository by getting the directory containing the
   # file that is currently being executed.
   scripts_dir = os.path.dirname(inspect.stack()[0][1])
-
-  # Write plot files.
-  utilization_plot_filename = "%s_utilization.gp" % filename
-  utilization_plot_file = open(utilization_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_utilization_base.gp"), "r"):
-    new_line = line.replace("__NAME__", out_filename)
-    utilization_plot_file.write(new_line)
-  utilization_plot_file.close()
-
-  disk_plot_filename = "%s_disk_utilization.gp" % filename
-  disk_plot_file = open(disk_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_disk_utilization_base.gp"), "r"):
-    new_line = line.replace("__OUT_FILENAME__", "%s_disk_utilization.pdf" % filename).replace(
-      "__NAME__", out_filename)
-    disk_plot_file.write(new_line)
-  disk_plot_file.close()
-
-  monotasks_plot_filename = "%s_monotasks.gp" % filename
-  monotasks_plot_file = open(monotasks_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_monotasks_base.gp"), "r"):
-    new_line = line.replace("__OUT_FILENAME__", "%s_monotasks.pdf" % filename).replace(
-      "__NAME__", out_filename)
-    monotasks_plot_file.write(new_line)
-  monotasks_plot_file.close()
 
   start = -1
   at_beginning = True
@@ -140,6 +141,33 @@ def plot_continuous_monitor(filename, open_graphs=False):
     write_data(out_file, data)
   out_file.close()
 
+  # Write plot files.
+  utilization_plot_filename = "%s_utilization.gp" % filename
+  utilization_plot_file = open(utilization_plot_filename, "w")
+  for line in open(os.path.join(scripts_dir, "plot_utilization_base.gp"), "r"):
+    new_line = line.replace("__NAME__", out_filename)
+    utilization_plot_file.write(new_line)
+  utilization_plot_file.close()
+
+  disk_plot_filename = "%s_disk_utilization.gp" % filename
+  disk_plot_file = open(disk_plot_filename, "w")
+  for line in open(os.path.join(scripts_dir, "plot_disk_utilization_base.gp"), "r"):
+    new_line = line.replace("__OUT_FILENAME__", "%s_disk_utilization.pdf" % filename).replace(
+      "__NAME__", out_filename)
+    disk_plot_file.write(new_line)
+  disk_plot_file.close()
+
+  xvdf_plot_output_name = plot_single_disk(filename, out_filename, "xvdf", ["xvdb"], scripts_dir)
+  xvdb_plot_output_name = plot_single_disk(filename, out_filename, "xvdb", ["xvdf"], scripts_dir)
+
+  monotasks_plot_filename = "%s_monotasks.gp" % filename
+  monotasks_plot_file = open(monotasks_plot_filename, "w")
+  for line in open(os.path.join(scripts_dir, "plot_monotasks_base.gp"), "r"):
+    new_line = line.replace("__OUT_FILENAME__", "%s_monotasks.pdf" % filename).replace(
+      "__NAME__", out_filename)
+    monotasks_plot_file.write(new_line)
+  monotasks_plot_file.close()
+
   subprocess.check_call("gnuplot %s" % utilization_plot_filename, shell=True)
   subprocess.check_call("gnuplot %s" % monotasks_plot_filename, shell=True)
   subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
@@ -148,6 +176,8 @@ def plot_continuous_monitor(filename, open_graphs=False):
     subprocess.check_call("open %s_utilization.pdf" % filename, shell=True)
     subprocess.check_call("open %s_monotasks.pdf" % filename, shell=True)
     subprocess.check_call("open %s_disk_utilization.pdf" % filename, shell=True)
+    subprocess.check_call("open %s" % xvdf_plot_output_name, shell=True)
+    subprocess.check_call("open %s" % xvdb_plot_output_name, shell=True)
 
 def parse_args():
   parser = argparse.ArgumentParser(description="Plots Spark continuous monitor logs.")
