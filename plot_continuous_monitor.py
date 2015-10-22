@@ -30,7 +30,6 @@ def plot_single_disk(filename, utilization_filename, disk_to_plot, disks_to_skip
       disk_plot_file.write(new_line)
   disk_plot_file.close()
 
-  print "Calling gnuplot with %s" % disk_plot_filename
   subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
 
   return disk_plot_output
