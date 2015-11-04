@@ -60,9 +60,9 @@ def plot_continuous_monitor(filename, open_graphs=False):
     time = json_data["Current Time"]
     if start == -1:
       start = time
-    disk_utilization = json_data["Disk Utilization"]["Device Name To Utilization"]
-    xvdf_utilization = disk_utilization[0]["xvdf"]
-    xvdb_utilization = disk_utilization[1]["xvdb"]
+    disk_utilizations = json_data["Disk Utilization"]["Device Name To Utilization"]
+    xvdf_utilization = get_util_for_disk(disk_utilizations, "xvdf")
+    xvdb_utilization= get_util_for_disk(disk_utilizations, "xvdb")
     xvdf_total_utilization = xvdf_utilization["Disk Utilization"]
     xvdb_total_utilization = xvdb_utilization["Disk Utilization"]
     xvdf_read_throughput = xvdf_utilization["Read Throughput"]
@@ -78,18 +78,19 @@ def plot_continuous_monitor(filename, open_graphs=False):
     running_compute_monotasks = 0
     if "Running Compute Monotasks" in json_data:
       running_compute_monotasks = json_data["Running Compute Monotasks"]
+
     xvdf_running_disk_monotasks = 0
     xvdb_running_disk_monotasks = 0
     if "Running Disk Monotasks" in json_data:
-      # Parse the number of currently running disk monotasks for each disk. xvdf is mounted on /mnt2
-      # and xvdb on /mnt (the indexing below will need to be updated if we use different instance
-      # types).
-      running_disk_monotasks_info = json_data["Running Disk Monotasks"]
-      RUNNING_MONOTASKS_KEY = "Running And Queued Monotasks"
-      if (len(running_disk_monotasks_info) > 0):
-        xvdf_running_disk_monotasks = running_disk_monotasks_info[0][RUNNING_MONOTASKS_KEY]
-        if (len(running_disk_monotasks_info) > 1):
-          xvdb_running_disk_monotasks = running_disk_monotasks_info[1][RUNNING_MONOTASKS_KEY]
+      # Parse the number of currently running disk monotasks for each disk.
+      for running_disk_monotasks_info in json_data["Running Disk Monotasks"]:
+        running_disk_monotasks = running_disk_monotasks_info["Running And Queued Monotasks"]
+        disk_name = running_disk_monotasks_info["Disk Name"]
+        if "xvdf" in disk_name:
+          xvdf_running_disk_monotasks = running_disk_monotasks
+        elif "xvdb" in disk_name:
+          xvdb_running_disk_monotasks = running_disk_monotasks
+
     running_macrotasks = 0
     if "Running Macrotasks" in json_data:
       running_macrotasks = json_data["Running Macrotasks"]
@@ -190,6 +191,16 @@ def parse_args():
     dest="open_graphs",
     help="Whether to open the resulting graph PDFs.")
   return parser.parse_args()
+
+def get_util_for_disk(disk_utils, disk):
+  """
+  Returns the disk utilization metrics for the specified disk, given the utilization information
+  for all disks, or None if the desired disk cannot be found.
+  """
+  for disk_util in disk_utils:
+    if disk in disk_util:
+      return disk_util[disk]
+  return None
 
 def main():
   args = parse_args()
