@@ -87,6 +87,28 @@ class Stage:
     total_output_size = sum([t.shuffle_mb_written for t in self.tasks])
     return total_output_size
 
+  def ideal_time(self, num_machines, cores_per_machine, disks_per_machine):
+    """ Returns the ideal completion time, if all of the monotasks had been scheduled perfectly. """
+    total_compute_millis = sum([t.compute_monotask_millis for t in self.tasks])
+    ideal_compute_millis = float(total_compute_millis) / (num_machines * cores_per_machine)
+
+    total_disk_millis = sum([t.disk_monotask_millis for t in self.tasks])
+    ideal_disk_millis = float(total_disk_millis) / (num_machines * disks_per_machine)
+
+    # The network time is harder to compute because the parallelism varies. Just estimate
+    # it based on an ideal link bandwidth.
+    total_network_bytes = sum([t.remote_mb_read for t in self.tasks if t.has_fetch])
+    # Assume a 1gb network.
+    network_bandwith_mb_per_second = 125.
+    ideal_network_seconds = total_network_bytes / (num_machines * network_bandwith_mb_per_second)
+    ideal_network_millis = ideal_network_seconds * 1000.
+
+    ideal_millis = max(ideal_compute_millis, ideal_disk_millis, ideal_network_millis)
+
+    print ("Ideal times for stage: CPU: %sms, Disk: %sms, Network: %sms (so %sms for whole stage)" %
+      (ideal_compute_millis, ideal_disk_millis, ideal_network_millis, ideal_millis))
+    return ideal_millis
+
   def add_event(self, data):
     task = Task(data)
 
