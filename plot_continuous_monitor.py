@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 
+BYTES_PER_GIGABYTE = float(1024 * 1024 * 1024)
+
 def write_data(out_file, data):
   stringified = [str(x) for x in data]
   out_file.write("\t".join(stringified))
@@ -116,6 +118,12 @@ def plot_continuous_monitor(filename, open_graphs=False):
     macrotasks_in_disk = 0
     if "Macrotasks In Disk" in json_data:
       macrotasks_in_disk = json_data["Macrotasks In Disk"]
+    free_heap_memory = 0
+    if "Free Heap Memory Bytes" in json_data:
+      free_heap_memory = json_data["Free Heap Memory Bytes"]
+    free_off_heap_memory = 0
+    if "Free Off-Heap Memory Bytes" in json_data:
+      free_off_heap_memory = json_data["Free Off-Heap Memory Bytes"]
 
     data = [
       time - start,
@@ -137,7 +145,9 @@ def plot_continuous_monitor(filename, open_graphs=False):
       xvdb_read_throughput,
       xvdb_write_throughput,
       xvdf_running_disk_monotasks,
-      xvdb_running_disk_monotasks]
+      xvdb_running_disk_monotasks,
+      free_heap_memory / BYTES_PER_GIGABYTE,
+      free_off_heap_memory / BYTES_PER_GIGABYTE]
     write_data(out_file, data)
   out_file.close()
 
@@ -168,14 +178,24 @@ def plot_continuous_monitor(filename, open_graphs=False):
     monotasks_plot_file.write(new_line)
   monotasks_plot_file.close()
 
+  memory_plot_filename = "%s_memory.gp" % filename
+  memory_plot_file = open(memory_plot_filename, "w")
+  for line in open(os.path.join(scripts_dir, "plot_memory_base.gp"), "r"):
+    new_line = line.replace("__OUT_FILENAME__", "%s_memory.pdf" % filename).replace(
+      "__NAME__", out_filename)
+    memory_plot_file.write(new_line)
+  memory_plot_file.close()
+
   subprocess.check_call("gnuplot %s" % utilization_plot_filename, shell=True)
   subprocess.check_call("gnuplot %s" % monotasks_plot_filename, shell=True)
   subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
+  subprocess.check_call("gnuplot %s" % memory_plot_filename, shell=True)
 
   if (open_graphs):
     subprocess.check_call("open %s_utilization.pdf" % filename, shell=True)
     subprocess.check_call("open %s_monotasks.pdf" % filename, shell=True)
     subprocess.check_call("open %s_disk_utilization.pdf" % filename, shell=True)
+    subprocess.check_call("open %s_memory.pdf" % filename, shell=True)
     subprocess.check_call("open %s" % xvdf_plot_output_name, shell=True)
     subprocess.check_call("open %s" % xvdb_plot_output_name, shell=True)
 
