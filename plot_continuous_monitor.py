@@ -96,6 +96,9 @@ def plot_continuous_monitor(filename, open_graphs=False):
     running_macrotasks = 0
     if "Running Macrotasks" in json_data:
       running_macrotasks = json_data["Running Macrotasks"]
+    local_running_macrotasks = 0
+    if "Local Running Macrotasks" in json_data:
+      local_running_macrotasks = json_data["Local Running Macrotasks"]
     gc_fraction = 0
     if "Fraction GC Time" in json_data:
       gc_fraction = json_data["Fraction GC Time"]
@@ -147,7 +150,8 @@ def plot_continuous_monitor(filename, open_graphs=False):
       xvdf_running_disk_monotasks,
       xvdb_running_disk_monotasks,
       free_heap_memory / BYTES_PER_GIGABYTE,
-      free_off_heap_memory / BYTES_PER_GIGABYTE]
+      free_off_heap_memory / BYTES_PER_GIGABYTE,
+      local_running_macrotasks]
     write_data(out_file, data)
   out_file.close()
 

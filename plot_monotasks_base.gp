@@ -27,6 +27,7 @@ set ylabel "# Running" offset 1
 set xlabel "Time"
 
 plot "__NAME__" using 1:8 with l ls 1 title "Macrotasks",\
+"__NAME__" using 1:23 with l ls 1 lc rgb "#feb24c" title "Local Macrotasks",\
 "__NAME__" using 1:11 with l ls 2 title "Macrotasks in network",\
 "__NAME__" using 1:12 with l ls 3 title "Macrotasks in compute",\
 "__NAME__" using 1:14 with l ls 7 title "Macrotasks in disk",\
