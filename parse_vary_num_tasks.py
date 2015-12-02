@@ -14,10 +14,10 @@ import utils
 
 def filter(all_jobs_dict):
   sorted_jobs = sorted(all_jobs_dict.iteritems())
-   # Take all of the jobs except the first two (the first one is a warmup job,
+   # Eliminate the first two jobs (the first one is a warmup job,
    # and the second job was responsible for generating the input RDD and caching
-   # it in-memory.
-  filtered_jobs = sorted_jobs[2:]
+   # it in-memory), and then every other job (since every other job just does GC).
+  filtered_jobs = sorted_jobs[3::2]
   return {k:v for (k,v) in filtered_jobs}
 
 def main(argv):
