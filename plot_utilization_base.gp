@@ -20,7 +20,6 @@ set output "__NAME__.pdf"
 set style fill solid border -1
 set grid xtics
 set grid ytics
-set xtics 1000000
 set yrange [0:1.2]
 set key above
 
