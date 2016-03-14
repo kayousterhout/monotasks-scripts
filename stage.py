@@ -87,14 +87,26 @@ class Stage:
     total_output_size = sum([t.shuffle_mb_written for t in self.tasks])
     return total_output_size
 
-  def ideal_time(self, num_machines, cores_per_machine, disks_per_machine):
+  def ideal_time(self, cores_per_machine, disks_per_machine):
     """ Returns the ideal completion time, if all of the monotasks had been scheduled perfectly. """
+    num_machines = len(set([t.executor_id for t in self.tasks]))
     total_compute_millis = sum([t.compute_monotask_millis for t in self.tasks])
     ideal_compute_millis = float(total_compute_millis) / (num_machines * cores_per_machine)
 
     total_disk_millis = sum([t.disk_monotask_millis for t in self.tasks])
     ideal_disk_millis = float(total_disk_millis) / (num_machines * disks_per_machine)
 
+    ideal_network_millis = self.__get_ideal_network_time(num_machines)
+
+    ideal_millis = max(ideal_compute_millis, ideal_disk_millis, ideal_network_millis)
+
+    print (("Ideal times for stage: CPU: %sms, Disk: %sms, Network: %sms (so %sms for whole " +
+      "stage); actual time was %s") %
+      (ideal_compute_millis, ideal_disk_millis, ideal_network_millis, ideal_millis, self.runtime()))
+    return ideal_millis
+
+  def __get_ideal_network_time(self, num_machines):
+    """Returns the ideal time it would take all of the stage's network transfers to complete."""
     # The network time is harder to compute because the parallelism varies. Just estimate
     # it based on an ideal link bandwidth.
     total_network_bytes = sum([t.remote_mb_read for t in self.tasks if t.has_fetch])
@@ -102,12 +114,30 @@ class Stage:
     network_bandwith_mb_per_second = 125.
     ideal_network_seconds = total_network_bytes / (num_machines * network_bandwith_mb_per_second)
     ideal_network_millis = ideal_network_seconds * 1000.
+    return ideal_network_millis
 
-    ideal_millis = max(ideal_compute_millis, ideal_disk_millis, ideal_network_millis)
+  def ideal_time_utilization(self, cores_per_machine):
+    """ Returns the stage's completion time if all executors had been fully utilized."""
+    executor_id_to_tasks = {}
+    for task in self.tasks:
+      if task.executor_id not in executor_id_to_tasks:
+        executor_id_to_tasks[task.executor_id] = []
+      executor_id_to_tasks[task.executor_id].append(task)
 
-    print ("Ideal times for stage: CPU: %sms, Disk: %sms, Network: %sms (so %sms for whole stage)" %
-      (ideal_compute_millis, ideal_disk_millis, ideal_network_millis, ideal_millis))
-    return ideal_millis
+    total_jiffies = 0
+    for executor_id, executor_tasks in executor_id_to_tasks.iteritems():
+      start_jiffies = min([task.start_total_cpu_jiffies for task in executor_tasks])
+      end_jiffies = max([task.end_total_cpu_jiffies for task in executor_tasks])
+      print end_jiffies - start_jiffies, "Jiffies elapsed on executor", executor_id
+      total_jiffies += end_jiffies - start_jiffies
+
+    total_millis = total_jiffies * 10
+    num_executors = len(executor_id_to_tasks)
+    ideal_cpu_millis = float(total_millis) / (num_executors * cores_per_machine)
+    ideal_network_millis = self.__get_ideal_network_time(num_executors)
+    print ("Ideal times for stage based on utilization: CPU: %sms, Network: %sms" %
+      (ideal_cpu_millis, ideal_network_millis))
+    return max(ideal_cpu_millis, ideal_network_millis)
 
   def add_event(self, data):
     task = Task(data)
