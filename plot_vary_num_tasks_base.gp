@@ -14,6 +14,7 @@ set border 3 back linestyle 80 # Remove border on top and right.  These
     # Also, put it in grey; no need for so much emphasis on a border.
 set xtics nomirror
 set ytics nomirror
+set y2tics
 
 set output "__NAME__.pdf"
 
@@ -23,10 +24,14 @@ set grid ytics
 set key above
 set xrange [0:]
 set yrange [0:]
+set y2range [0:]
 
 set ylabel "Runtime (s)" offset 1
+set y2label "Relative diff." offset 1
 set xlabel "# Tasks"
 
 plot "__NAME__" using 1:($3 / 1000):($2 / 1000):($4 / 1000) with yerrorbars ls 3 lw 4 title "Actual Runtime",\
   "__NAME__" using 1:($3 / 1000) with l ls 3 lw 4 notitle,\
-  (__IDEAL_RUNTIME__ / 1000) with l ls 2 lw 4 title "Ideal Runtime"
+  "__NAME__" using 1:($6 / 1000) with l ls 2 lw 4 title "Ideal Runtime",\
+  "__NAME__" using 1:($9 - 1):($8 - 1):($10 - 1) with yerrorbars ls 4 axes x1y2 title "Relative diff.",\
+  "__NAME__" using 1:($9 - 1) with l ls 4 axes x1y2 notitle

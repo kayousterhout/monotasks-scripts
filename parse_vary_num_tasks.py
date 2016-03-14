@@ -21,23 +21,26 @@ def filter(all_jobs_dict):
   return {k:v for (k,v) in filtered_jobs}
 
 def main(argv):
-  if len(argv) < 4:
-    print "Usage: parse_vary_num_tasks.py driver_hostname identity_file output_directory"
+  if len(argv) < 5:
+    print ("Usage: parse_vary_num_tasks.py driver_hostname identity_file " +
+        "output_directory num_experiments")
     sys.exit(1)
 
   driver_hostname = argv[1]
   identity_file = argv[2]
   output_prefix = argv[3]
+  num_experiments = argv[4]
   username = "root"
 
   if (not os.path.exists(output_prefix)):
     os.mkdir(output_prefix)
 
+  list_filenames_command = "ls -t /mnt/experiment_log_*gz | head -n " + num_experiments
   event_log_filenames = utils.ssh_get_stdout(
     driver_hostname,
     identity_file,
     username,
-    "ls -t /mnt/experiment_log_*gz | head -n 5").strip("\n").strip("\r")
+    list_filenames_command).strip("\n").strip("\r")
   print event_log_filenames
 
   output_filename = os.path.join(output_prefix, "actual_runtimes")
@@ -74,27 +77,45 @@ def main(argv):
     num_tasks = num_tasks_values[0]
 
     # Compute the ideal runtime.
-    ideal_runtimes_millis = [sum([stage.ideal_time(15, 8, 1)
+    ideal_runtimes_millis = [sum([stage.ideal_time(cores_per_machine = 8, disks_per_machine = 0)
       for (stage_id, stage) in job.stages.iteritems()]) for job in all_jobs]
+
+    # Compute the ideal runtimes based on utilization.
+    ideal_runtimes_utilization_millis = [sum([stage.ideal_time_utilization(8)
+      for (stage_id, stage) in job.stages.iteritems()]) for job in all_jobs]
+    print "Ideal times based on util:", ideal_runtimes_utilization_millis
+
     print "Ideal runtimes:", ideal_runtimes_millis
     all_ideal_runtimes.extend(ideal_runtimes_millis)
 
-    # Output the actual runtimes.
     actual_runtimes_millis = [job.runtime() for job in all_jobs]
+    actual_over_ideal = [actual / ideal
+      for actual, ideal in zip(actual_runtimes_millis, ideal_runtimes_utilization_millis)]
+
     print "Actual runtimes:", actual_runtimes_millis
-    output_file.write("%s\t%s\t%s\t%s\n" %
-      (num_tasks,
-       min(actual_runtimes_millis),
-       numpy.percentile(actual_runtimes_millis, 50),
-       max(actual_runtimes_millis)))
+    data_to_write = [
+      num_tasks,
+      min(actual_runtimes_millis),
+      numpy.percentile(actual_runtimes_millis, 50),
+      max(actual_runtimes_millis),
+      min(ideal_runtimes_millis),
+      numpy.percentile(ideal_runtimes_millis, 50),
+      max(ideal_runtimes_millis),
+      min(actual_over_ideal),
+      numpy.percentile(actual_over_ideal, 50),
+      max(actual_over_ideal),
+      min(ideal_runtimes_utilization_millis),
+      numpy.percentile(ideal_runtimes_utilization_millis, 50),
+      max(ideal_runtimes_utilization_millis)]
+    output_file.write("\t".join([str(x) for x in data_to_write]))
+    output_file.write("\n")
   output_file.close()
 
   ideal_runtime = numpy.mean(all_ideal_runtimes)
   plot_filename = os.path.join(output_prefix, "actual_runtimes.gp")
   plot_file = open(plot_filename, "w")
   for line in open("plot_vary_num_tasks_base.gp", "r"):
-    new_line = line.replace("__NAME__", output_filename).replace(
-      "__IDEAL_RUNTIME__", str(ideal_runtime))
+    new_line = line.replace("__NAME__", output_filename)
     plot_file.write(new_line)
   plot_file.close()
 
