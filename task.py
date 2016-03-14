@@ -140,8 +140,6 @@ class Task:
           assert(self.output_mb == 0)
           self.output_on_disk = False
         self.output_mb += memory_size / 1048576.
-        # Don't expect any tasks to write disk output.
-        assert(status["Disk Size"] == 0)
 
     self.has_fetch = True
     # False if the task was a map task that did not run locally with its input data.
