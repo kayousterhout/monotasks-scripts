@@ -1,48 +1,15 @@
 import argparse
-import inspect
 import json
-import os
-import subprocess
-import sys
+import plot_gnuplot
+import plot_matplotlib
 
 BYTES_PER_GIGABYTE = float(1024 * 1024 * 1024)
+BYTES_PER_KILOBYTE = 1024 * 1024
+BYTES_PER_GIGABIT = BYTES_PER_GIGABYTE / 8
+CORES = 8.0
 
-def write_data(out_file, data):
-  stringified = [str(x) for x in data]
-  out_file.write("\t".join(stringified))
-  out_file.write("\n")
-
-def plot_single_disk(filename, utilization_filename, disk_to_plot, disks_to_skip, scripts_dir):
-  """
-  Plots the utilization for a single disk, ignoring the utilization for any disks in
-  disks_to_skip.
-  """
-  disk_plot_filename_prefix = "%s_%s_disk_utilization" % (filename, disk_to_plot)
-  disk_plot_filename = "%s.gp" % disk_plot_filename_prefix
-  disk_plot_output = "%s.pdf" % disk_plot_filename_prefix
-  disk_plot_file = open(disk_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_disk_utilization_base.gp"), "r"):
-    skip = False
-    for disk_to_skip in disks_to_skip:
-      if line.find(disk_to_skip) != -1:
-        skip = True
-    if not skip:
-      new_line = line.replace("__OUT_FILENAME__", disk_plot_output).replace(
-        "__NAME__", utilization_filename)
-      disk_plot_file.write(new_line)
-  disk_plot_file.close()
-
-  subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
-
-  return disk_plot_output
-
-def plot_continuous_monitor(filename, open_graphs=False):
-  out_filename = "%s_utilization" % filename
-  out_file = open(out_filename, "w")
-
-  # Get the location of the monotasks-scripts repository by getting the directory containing the
-  # file that is currently being executed.
-  scripts_dir = os.path.dirname(inspect.stack()[0][1])
+def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
+  continuous_monitor_data = []
 
   start = -1
   at_beginning = True
@@ -64,7 +31,7 @@ def plot_continuous_monitor(filename, open_graphs=False):
       start = time
     disk_utilizations = json_data["Disk Utilization"]["Device Name To Utilization"]
     xvdf_utilization = get_util_for_disk(disk_utilizations, "xvdf")
-    xvdb_utilization= get_util_for_disk(disk_utilizations, "xvdb")
+    xvdb_utilization = get_util_for_disk(disk_utilizations, "xvdb")
     xvdf_total_utilization = xvdf_utilization["Disk Utilization"]
     xvdb_total_utilization = xvdb_utilization["Disk Utilization"]
     xvdf_read_throughput = xvdf_utilization["Read Throughput"]
@@ -129,106 +96,69 @@ def plot_continuous_monitor(filename, open_graphs=False):
       free_off_heap_memory = json_data["Free Off-Heap Memory Bytes"]
 
     data = [
-      time - start,
-      xvdf_total_utilization,
-      xvdb_total_utilization,
-      cpu_total / 8.0,
-      bytes_received / 125000000.,
-      bytes_transmitted / 125000000.,
-      running_compute_monotasks,
-      running_macrotasks,
-      gc_fraction,
-      outstanding_network_bytes / (1024 * 1024),
-      macrotasks_in_network,
-      macrotasks_in_compute,
-      cpu_system / 8.0,
-      macrotasks_in_disk,
-      xvdf_read_throughput,
-      xvdf_write_throughput,
-      xvdb_read_throughput,
-      xvdb_write_throughput,
-      xvdf_running_disk_monotasks,
-      xvdb_running_disk_monotasks,
-      free_heap_memory / BYTES_PER_GIGABYTE,
-      free_off_heap_memory / BYTES_PER_GIGABYTE,
-      local_running_macrotasks]
-    write_data(out_file, data)
-  out_file.close()
+      ('time', time - start),
+      ('xvdf utilization', xvdf_total_utilization),
+      ('xvdb utilization', xvdb_total_utilization),
+      ('cpu utilization', cpu_total / CORES),
+      ('bytes received', bytes_received / BYTES_PER_GIGABIT),
+      ('bytes transmitted', bytes_transmitted / BYTES_PER_GIGABIT),
+      ('running compute monotasks', running_compute_monotasks),
+      ('running monotasks', running_macrotasks),
+      ('gc fraction', gc_fraction),
+      ('outstanding network bytes', outstanding_network_bytes / BYTES_PER_KILOBYTE),
+      ('macrotasks in network', macrotasks_in_network),
+      ('macrotasks in compute', macrotasks_in_compute),
+      ('cpu system', cpu_system / CORES),
+      ('macrotasks in disk', macrotasks_in_disk),
+      ('xvdf read throughput', xvdf_read_throughput),
+      ('xvdf write throughput', xvdf_write_throughput),
+      ('xvdb read throughput', xvdb_read_throughput),
+      ('xvdb write throughput', xvdb_write_throughput),
+      ('xvdf running disk monotasks', xvdf_running_disk_monotasks),
+      ('xvdb running disk monotasks', xvdb_running_disk_monotasks),
+      ('free heap memory', free_heap_memory / BYTES_PER_GIGABYTE),
+      ('free off heap memory', free_off_heap_memory / BYTES_PER_GIGABYTE),
+      ('local running macrotasks', local_running_macrotasks)
+    ]
+    continuous_monitor_data.append(data)
 
-  # Write plot files.
-  utilization_plot_filename = "%s_utilization.gp" % filename
-  utilization_plot_file = open(utilization_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_utilization_base.gp"), "r"):
-    new_line = line.replace("__NAME__", out_filename)
-    utilization_plot_file.write(new_line)
-  utilization_plot_file.close()
+  if use_gnuplot:
+    plot_gnuplot.plot(continuous_monitor_data, filename, open_graphs)
+  else:
+    plot_matplotlib.plot([dict(line) for line in continuous_monitor_data],
+                         filename, open_graphs)
 
-  disk_plot_filename = "%s_disk_utilization.gp" % filename
-  disk_plot_file = open(disk_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_disk_utilization_base.gp"), "r"):
-    new_line = line.replace("__OUT_FILENAME__", "%s_disk_utilization.pdf" % filename).replace(
-      "__NAME__", out_filename)
-    disk_plot_file.write(new_line)
-  disk_plot_file.close()
-
-  xvdf_plot_output_name = plot_single_disk(filename, out_filename, "xvdf", ["xvdb"], scripts_dir)
-  xvdb_plot_output_name = plot_single_disk(filename, out_filename, "xvdb", ["xvdf"], scripts_dir)
-
-  monotasks_plot_filename = "%s_monotasks.gp" % filename
-  monotasks_plot_file = open(monotasks_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_monotasks_base.gp"), "r"):
-    new_line = line.replace("__OUT_FILENAME__", "%s_monotasks.pdf" % filename).replace(
-      "__NAME__", out_filename)
-    monotasks_plot_file.write(new_line)
-  monotasks_plot_file.close()
-
-  memory_plot_filename = "%s_memory.gp" % filename
-  memory_plot_file = open(memory_plot_filename, "w")
-  for line in open(os.path.join(scripts_dir, "plot_memory_base.gp"), "r"):
-    new_line = line.replace("__OUT_FILENAME__", "%s_memory.pdf" % filename).replace(
-      "__NAME__", out_filename)
-    memory_plot_file.write(new_line)
-  memory_plot_file.close()
-
-  subprocess.check_call("gnuplot %s" % utilization_plot_filename, shell=True)
-  subprocess.check_call("gnuplot %s" % monotasks_plot_filename, shell=True)
-  subprocess.check_call("gnuplot %s" % disk_plot_filename, shell=True)
-  subprocess.check_call("gnuplot %s" % memory_plot_filename, shell=True)
-
-  if (open_graphs):
-    subprocess.check_call("open %s_utilization.pdf" % filename, shell=True)
-    subprocess.check_call("open %s_monotasks.pdf" % filename, shell=True)
-    subprocess.check_call("open %s_disk_utilization.pdf" % filename, shell=True)
-    subprocess.check_call("open %s_memory.pdf" % filename, shell=True)
-    subprocess.check_call("open %s" % xvdf_plot_output_name, shell=True)
-    subprocess.check_call("open %s" % xvdb_plot_output_name, shell=True)
-
-def parse_args():
-  parser = argparse.ArgumentParser(description="Plots Spark continuous monitor logs.")
-  parser.add_argument(
-    "-f", "--filename", help="The path to a continuous monitor log file.", required=True)
-  parser.add_argument(
-    "-o",
-    "--open-graphs",
-    action="store_true",
-    default=False,
-    dest="open_graphs",
-    help="Whether to open the resulting graph PDFs.")
-  return parser.parse_args()
 
 def get_util_for_disk(disk_utils, disk):
   """
-  Returns the disk utilization metrics for the specified disk, given the utilization information
-  for all disks, or None if the desired disk cannot be found.
+  Returns the disk utilization metrics for the specified disk, given the
+  utilization information for all disks, or None if the desired disk cannot be
+  found.
   """
   for disk_util in disk_utils:
     if disk in disk_util:
       return disk_util[disk]
   return None
 
+
+def parse_args():
+  parser = argparse.ArgumentParser(description="Plots Spark continuous monitor logs.")
+  parser.add_argument("-f", "--filename",
+                      help="The path to a continuous monitor log file.",
+                      required=True)
+  parser.add_argument("-o", "--open-graphs",
+                      help="open generated graphs",
+                      action="store_true", default=False)
+  parser.add_argument("-g", "--gnuplot",
+                      help="generate graphs with gnuplot",
+                      action="store_true", default=False)
+
+  return parser.parse_args()
+
+
 def main():
   args = parse_args()
-  plot_continuous_monitor(args.filename, args.open_graphs)
+  plot_continuous_monitor(args.filename, args.open_graphs, args.gnuplot)
 
 if __name__ == "__main__":
   main()
