@@ -94,7 +94,9 @@ class Stage:
     ideal_compute_millis = float(total_compute_millis) / (num_machines * cores_per_machine)
 
     total_disk_millis = sum([t.disk_monotask_millis for t in self.tasks])
-    ideal_disk_millis = float(total_disk_millis) / (num_machines * disks_per_machine)
+    ideal_disk_millis = 0
+    if total_disk_millis > 0:
+      ideal_disk_millis = float(total_disk_millis) / (num_machines * disks_per_machine)
 
     ideal_network_millis = self.__get_ideal_network_time(num_machines)
 
