@@ -48,8 +48,6 @@ def copy_data(driver_hostname, identity_file, output_prefix, num_experiments, us
       "tar -xvzf %s -C %s" % (local_zipped_logs_name, output_prefix),
       shell=True)
 
-    local_filenames.append(os.path.join(local_zipped_logs_name[:-7], "event_log"))
-
 def main(argv):
   if len(argv) < 2:
     print ("Usage: parse_vary_num_tasks.py output_directory [opt (to copy data): driver_hostname " +
