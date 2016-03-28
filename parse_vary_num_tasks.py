@@ -51,18 +51,27 @@ def copy_data(driver_hostname, identity_file, output_prefix, num_experiments, us
 def main(argv):
   if len(argv) < 2:
     print ("Usage: parse_vary_num_tasks.py output_directory [opt (to copy data): driver_hostname " +
-        "identity_file num_experiments]")
+        "identity_file num_experiments [opt username]]")
     sys.exit(1)
 
   output_prefix = argv[1]
   if (not os.path.exists(output_prefix)):
     os.mkdir(output_prefix)
 
+  num_cores = 8
+
   if len(argv) >= 5:
     driver_hostname = argv[2]
+    if "millennium" in driver_hostname:
+      # The millennium machines have 16 cores.
+      num_cores = 16
     identity_file = argv[3]
     num_experiments = argv[4]
-    copy_data(driver_hostname, identity_file, output_prefix, num_experiments, "root")
+    if len(argv) >= 6:
+      username = argv[5]
+    else:
+      username = "root"
+    copy_data(driver_hostname, identity_file, output_prefix, num_experiments, username)
 
   all_dirnames = [d for d in os.listdir(output_prefix) if "experiment" in d and "tar.gz" not in d]
   all_dirnames.sort(key = lambda d: int(re.search('experiment_log_([0-9]*)_', d).group(1)))
@@ -92,8 +101,8 @@ def main(argv):
       job_ideal_millis = 0
       job_ideal_utilization_millis = 0
       for (stage_id, stage) in job.stages.iteritems():
-        job_ideal_millis += stage.ideal_time(cores_per_machine = 8, disks_per_machine = 0)
-        stage_ideal_utilization_millis = stage.ideal_time_utilization(8)
+        job_ideal_millis += stage.ideal_time(cores_per_machine = num_cores, disks_per_machine = 0)
+        stage_ideal_utilization_millis = stage.ideal_time_utilization(num_cores)
         job_ideal_utilization_millis += stage_ideal_utilization_millis
         if stage.has_shuffle_read():
           ideal_reduce_runtimes_millis.append(stage_ideal_utilization_millis)

@@ -15,7 +15,8 @@ def scp_from(host, identity_file, username, remote_file, local_file):
     (identity_file, username, host, remote_file, local_file), shell=True)
 
 def ssh_get_stdout(host, identity_file, username, command):
-  command = "source /root/.bash_profile; %s" % command
+  if "ec2" in host:
+    command = "source /root/.bash_profile; %s" % command
   ssh_command = ("ssh -t -o StrictHostKeyChecking=no -i %s %s@%s '%s'" %
     (identity_file, username, host, command))
   return subprocess.Popen(ssh_command, stdout=subprocess.PIPE, shell=True).communicate()[0]

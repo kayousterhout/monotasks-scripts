@@ -3,7 +3,7 @@ import os
 import subprocess
 
 
-def plot(cm_data, file_prefix, open_graphs):
+def plot(cm_data, file_prefix, open_graphs, disk_to_index):
   """
   Creates gnuplot files that can be used to generate plots with data for
   various continuous monitor attributes, and uses those files to generate PDFs
@@ -18,15 +18,13 @@ def plot(cm_data, file_prefix, open_graphs):
   # Get the location of the monotasks-scripts repository by getting the
   # directory containing the file that is currently being executed.
   scripts_dir = os.path.dirname(inspect.stack()[0][1])
-  attributes = ['utilization', 'disk_utilization', 'monotasks', 'memory']
+  attributes = ['utilization', 'monotasks', 'memory']
 
   for attribute in attributes:
     plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir)
 
-  plot_single_disk('xvdb', ['xvdf'], file_prefix, open_graphs, scripts_dir,
-                   out_filename)
-  plot_single_disk('xvdf', ['xvdb'], file_prefix, open_graphs, scripts_dir,
-                   out_filename)
+  for disk_name, index in disk_to_index.iteritems():
+    plot_single_disk(disk_name, index, file_prefix, open_graphs, scripts_dir, out_filename)
 
 
 def plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir):
@@ -46,24 +44,26 @@ def plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir):
     subprocess.check_call('open {0}'.format(pdf_filename), shell=True)
 
 
-def plot_single_disk(disk_to_plot, disks_to_skip, file_prefix, open_graphs, scripts_dir, util_filename):
-  """
-  Plots the utilization for a single disk, ignoring the utilization for any disks in
-  disks_to_skip.
-  """
+def plot_single_disk(disk_to_plot, start_index, file_prefix, open_graphs, scripts_dir,
+                     util_filename):
+  """ Plots the utilization for a single disk. """
   disk_plot_filename_prefix = '{0}_{1}_disk_utilization'.format(file_prefix, disk_to_plot)
   disk_plot_filename = '{0}.gp'.format(disk_plot_filename_prefix)
   disk_plot_output = '{0}.pdf'.format(disk_plot_filename_prefix)
   disk_plot_file = open(disk_plot_filename, 'w')
   for line in open(os.path.join(scripts_dir, 'gnuplot_files/plot_disk_utilization_base.gp'), 'r'):
-    skip = False
-    for disk_to_skip in disks_to_skip:
-      if line.find(disk_to_skip) != -1:
-        skip = True
-    if not skip:
-      new_line = line.replace('__OUT_FILENAME__', disk_plot_output).replace(
-        '__NAME__', util_filename)
+      new_line = line.replace('__OUT_FILENAME__', disk_plot_output)
       disk_plot_file.write(new_line)
+  # Write lines to plot the information about one disk.
+  line_template = "\"%s\" using 1:%d with l ls %d title \"%s\""
+  disk_plot_file.write("plot ")
+  disk_plot_file.write(line_template % (util_filename, start_index, 2, "Utilization"))
+  disk_plot_file.write(",\\\n")
+  disk_plot_file.write(line_template % (util_filename, start_index + 1, 3, "Read Throughput"))
+  disk_plot_file.write(",\\\n")
+  disk_plot_file.write(line_template % (util_filename, start_index + 2, 4, "Write Throughput"))
+  disk_plot_file.write(",\\\n")
+  disk_plot_file.write(line_template % (util_filename, start_index + 3, 5, "Monotasks"))
 
   disk_plot_file.close()
   subprocess.check_call('gnuplot {0}'.format(disk_plot_filename), shell=True)

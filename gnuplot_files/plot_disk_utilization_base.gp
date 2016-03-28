@@ -30,17 +30,3 @@ set ylabel "Utilization" offset 1
 set y2label "Throughput"
 set xlabel "Time"
 
-# The -1s here are a hack so that it's easy for the plot_continuous_monitor.py
-# script to just drop lines from the list of things to plot (otherwise that
-# script has to worry about potentially dropping the line with "plot" or the
-# last line).
-plot -1 notitle,\
-"__NAME__" using 1:2 with l ls 2 title "Disk Utilization (xvdf)",\
-"__NAME__" using 1:3 with l ls 1 title "Disk Utilization (xvdb)",\
-"__NAME__" using 1:15 with l ls 3 title "Read Throughput (xvdf)" axes x1y2,\
-"__NAME__" using 1:17 with l ls 4 title "Read Throughput (xvdb)" axes x1y2,\
-"__NAME__" using 1:16 with l ls 6 title "Write Throughput (xvdf)" axes x1y2,\
-"__NAME__" using 1:18 with l ls 7 title "Write Throughput (xvdb)" axes x1y2,\
-"__NAME__" using 1:19 with l ls 8 title "Monotasks (xvdf)",\
-"__NAME__" using 1:20 with l ls 9 title "Monotasks (xvdb)",\
--1 notitle

@@ -27,5 +27,5 @@ set key above
 set ylabel "Free Memory (GiB)" offset 1
 set xlabel "Time"
 
-plot "__NAME__" using 1:21 with l ls 2 title "Free Heap Memory",\
-"__NAME__" using 1:22 with l ls 1 title "Free Off-Heap Memory"
+plot "__NAME__" using 1:13 with l ls 2 title "Free Heap Memory",\
+"__NAME__" using 1:14 with l ls 1 title "Free Off-Heap Memory"
