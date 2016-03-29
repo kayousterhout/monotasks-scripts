@@ -10,7 +10,7 @@ def plot(cm_data, file_prefix, open_graphs):
   of each plot
   """
   # Write continuous monitor data to tab deliminated data file.
-  out_filename = '%s_utilization'.format(file_prefix)
+  out_filename = "%s_utilization" % file_prefix
   with open(out_filename, 'w') as out_file:
     for data in cm_data:
       write_data(out_file, [val[1] for val in data])
