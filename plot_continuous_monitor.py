@@ -103,7 +103,7 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
       ('bytes received', bytes_received / BYTES_PER_GIGABIT),
       ('bytes transmitted', bytes_transmitted / BYTES_PER_GIGABIT),
       ('running compute monotasks', running_compute_monotasks),
-      ('running monotasks', running_macrotasks),
+      ('running macrotasks', running_macrotasks),
       ('gc fraction', gc_fraction),
       ('outstanding network bytes', outstanding_network_bytes / BYTES_PER_KILOBYTE),
       ('macrotasks in network', macrotasks_in_network),

@@ -24,7 +24,7 @@ def plot(cm_data, file_prefix, open_graphs):
                       'macrotasks in network',
                       'macrotasks in compute',
                       'macrotasks in disk',
-                      'running monotasks',
+                      'running macrotasks',
                       'gc fraction',
                       'outstanding network bytes']
   utilization_params = ['cpu utilization',
@@ -71,6 +71,6 @@ def plot(cm_data, file_prefix, open_graphs):
     plot_params(utilization_params,
                 'Utilization')
     plot_params(xvdb_params,
-                'xvdd Utilization')
+                'xvdb Utilization')
     plot_params(xvdf_params,
                 'xvdf Utilization')
