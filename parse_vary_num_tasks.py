@@ -144,8 +144,10 @@ def main(argv):
     output_file.write("\n")
   output_file.close()
 
-  plot(output_prefix, "actual_runtimes", "actual_runtimes.gp", "plot_vary_num_tasks_base.gp")
-  plot(output_prefix, "actual_runtimes", "actual_runtimes_map_reduce.gp", "plot_vary_num_tasks_map_reduce_base.gp")
+  plot(output_prefix, "actual_runtimes", "actual_runtimes.gp",
+       "gnuplot_files/plot_vary_num_tasks_base.gp")
+  plot(output_prefix, "actual_runtimes", "actual_runtimes_map_reduce.gp",
+       "gnuplot_files/plot_vary_num_tasks_map_reduce_base.gp")
 
 def plot(output_prefix, data_filename, plot_filename, plot_base):
   absolute_plot_filename = os.path.join(output_prefix, plot_filename)
