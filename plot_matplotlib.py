@@ -30,6 +30,8 @@ def plot(cm_data, file_prefix, open_graphs):
   utilization_params = ['cpu utilization',
                         'xvdf utilization',
                         'xvdb utilization',
+                        'bytes received',
+                        'bytes transmitted',
                         'cpu system',
                         'gc fraction']
   xvdf_params = ['xvdf running disk monotasks',
