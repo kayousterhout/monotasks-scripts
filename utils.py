@@ -3,6 +3,8 @@ This file contains helper functions used by many of the experiment scripts.
 """
 
 from optparse import OptionParser
+import os
+from os import path
 import subprocess
 import sys
 
@@ -48,3 +50,9 @@ def copy_latest_continuous_monitor(hostname, identity_file, filename_prefix, use
   plot_continuous_monitor.plot_continuous_monitor(local_continuous_monitor_file, open_graphs=True)
   return local_continuous_monitor_file
 
+def plot_continuous_monitors(log_dir):
+  """ Plots all of the continuous monitors in the provided directory. """
+  for log_filename in os.listdir(log_dir):
+    if log_filename.endswith("executor_monitor"):
+      plot_continuous_monitor.plot_continuous_monitor(
+        path.join(log_dir, log_filename), use_gnuplot=True)
