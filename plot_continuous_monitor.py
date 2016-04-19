@@ -158,8 +158,8 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
   if use_gnuplot:
     plot_gnuplot.plot(continuous_monitor_data, filename, open_graphs, disks_to_index)
   else:
-    plot_matplotlib.plot([dict(line) for line in continuous_monitor_data],
-                         filename, open_graphs)
+    plot_matplotlib.plot([dict(line) for line in continuous_monitor_data], filename, open_graphs,
+                         disks_to_index.iterkeys())
 
 
 def get_util_for_disk(disk_utils, disk):

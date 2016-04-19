@@ -1,9 +1,9 @@
 import matplotlib.pyplot as pyplot
 
-from matplotlib.backends.backend_pdf import PdfPages
+from matplotlib.backends import backend_pdf
 
 
-def continuous_monitor_col(key, continuous_monitor):
+def continuous_monitor_col(continuous_monitor, key):
   """
   For a given key, returns a list of data from continuous monitor entries
   corresponding to that key.
@@ -11,37 +11,33 @@ def continuous_monitor_col(key, continuous_monitor):
   return [data[key] for data in continuous_monitor]
 
 
-def plot(cm_data, file_prefix, open_graphs):
-  disk_utilization_params = ['xvdf utilization',
-                             'xvdb utilization',
-                             'xvdf write throughput',
-                             'xvdf read throughput',
-                             'xvdb write throughput',
-                             'xvdb read throughput']
-  memory_params = ['free heap memory',
-                   'free off heap memory']
-  monotasks_params = ['local running macrotasks',
-                      'macrotasks in network',
-                      'macrotasks in compute',
-                      'macrotasks in disk',
-                      'running macrotasks',
-                      'gc fraction',
-                      'outstanding network bytes']
-  utilization_params = ['cpu utilization',
-                        'xvdf utilization',
-                        'xvdb utilization',
-                        'bytes received',
-                        'bytes transmitted',
-                        'cpu system',
-                        'gc fraction']
-  xvdf_params = ['xvdf running disk monotasks',
-                 'xvdf write throughput',
-                 'xvdf read throughput',
-                 'xvdf utilization']
-  xvdb_params = ['xvdb running disk monotasks',
-                 'xvdb write throughput',
-                 'xvdb read throughput',
-                 'xvdb utilization']
+def plot(cm_data, file_prefix, open_graphs, disks):
+  disk_utilization_params = ['{0} utilization'.format(disk) for disk in disks]
+  disk_params = (
+    disk_utilization_params +
+    ['{0} write throughput'.format(disk) for disk in disks] +
+    ['{0} read throughput'.format(disk) for disk in disks]
+  )
+  memory_params = [
+    'free heap memory',
+    'free off heap memory'
+  ]
+  monotasks_params = [
+    'local running macrotasks',
+    'macrotasks in network',
+    'macrotasks in compute',
+    'macrotasks in disk',
+    'running macrotasks',
+    'gc fraction',
+    'outstanding network bytes'
+  ]
+  utilization_params = [
+    'cpu utilization',
+    'bytes received',
+    'bytes transmitted',
+    'cpu system',
+    'gc fraction'
+  ] + disk_utilization_params
 
   def plot_params(params_to_plot, title):
     """
@@ -49,30 +45,29 @@ def plot(cm_data, file_prefix, open_graphs):
     Time is the x axis and data corresponding to each parameter is used to
     generate a new line on the line graph.
     """
-    handles = []
-    time = continuous_monitor_col('time', cm_data)
-    for key in params_to_plot:
-      handle = pyplot.plot(time, continuous_monitor_col(key, cm_data),
-                           label=key)[0]
-      handles.append(handle)
-    pyplot.legend(handles)
+    pyplot.figure(title)
     pyplot.title(title)
-    pdf.savefig()
-    if open_graphs:
-      pyplot.show()
-    else:
-      pyplot.close()
+    pyplot.grid(b=True, which='both')
+    times = continuous_monitor_col(cm_data, key='time')
+    for key in params_to_plot:
+      pyplot.plot(times, continuous_monitor_col(cm_data, key), label=key)
+    legend = pyplot.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-  with PdfPages('{0}_graphs.pdf'.format(file_prefix)) as pdf:
-    plot_params(disk_utilization_params,
-                'Disk Utilization')
-    plot_params(memory_params,
-                'Memory')
-    plot_params(monotasks_params,
-                'Monotasks')
-    plot_params(utilization_params,
-                'Utilization')
-    plot_params(xvdb_params,
-                'xvdb Utilization')
-    plot_params(xvdf_params,
-                'xvdf Utilization')
+    pdf_filepath = '{0}_{1}_graphs.pdf'.format(file_prefix, title.lower().replace(' ', '_'))
+    with backend_pdf.PdfPages(pdf_filepath) as pdf:
+      pdf.savefig(additional_artists=[legend], bbox_inches='tight')
+
+  plot_params(disk_params, title='Disk Utilization')
+  plot_params(memory_params, title='Memory')
+  plot_params(monotasks_params, title='Monotasks')
+  plot_params(utilization_params, title='Utilization')
+
+  for disk in disks:
+    disk_params = ['{0} running disk monotasks'.format(disk),
+                   '{0} write throughput'.format(disk),
+                   '{0} read throughput'.format(disk),
+                   '{0} utilization'.format(disk)]
+    plot_params(disk_params, title='{0} Utilization'.format(disk))
+
+  if open_graphs:
+    pyplot.show()
