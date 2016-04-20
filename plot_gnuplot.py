@@ -55,15 +55,16 @@ def plot_single_disk(disk_to_plot, start_index, file_prefix, open_graphs, script
       new_line = line.replace('__OUT_FILENAME__', disk_plot_output)
       disk_plot_file.write(new_line)
   # Write lines to plot the information about one disk.
-  line_template = "\"%s\" using 1:%d with l ls %d title \"%s\""
+  line_template_y1 = "\"%s\" using 1:%d with l ls %d title \"%s\""
+  line_template_y2 = "%s axes x1y2" % line_template_y1
   disk_plot_file.write("plot ")
-  disk_plot_file.write(line_template % (util_filename, start_index, 2, "Utilization"))
+  disk_plot_file.write(line_template_y1 % (util_filename, start_index, 2, "Utilization"))
   disk_plot_file.write(",\\\n")
-  disk_plot_file.write(line_template % (util_filename, start_index + 1, 3, "Read Throughput"))
+  disk_plot_file.write(line_template_y2 % (util_filename, start_index + 1, 3, "Read Throughput"))
   disk_plot_file.write(",\\\n")
-  disk_plot_file.write(line_template % (util_filename, start_index + 2, 4, "Write Throughput"))
+  disk_plot_file.write(line_template_y2 % (util_filename, start_index + 2, 4, "Write Throughput"))
   disk_plot_file.write(",\\\n")
-  disk_plot_file.write(line_template % (util_filename, start_index + 3, 5, "Monotasks"))
+  disk_plot_file.write(line_template_y1 % (util_filename, start_index + 3, 5, "Monotasks"))
 
   disk_plot_file.close()
   subprocess.check_call('gnuplot {0}'.format(disk_plot_filename), shell=True)
