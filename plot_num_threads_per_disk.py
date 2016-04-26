@@ -42,7 +42,7 @@ def main():
       jcts = __get_jcts_from_logs(trial_log_dir_filepath, args.warmup_count)
       num_threads_to_jcts[num_threads] = jcts
 
-  assert len(num_threads_to_jcts) > 0, "No valid logs found in %s" % log_dir
+  assert len(num_threads_to_jcts) > 0, "No valid logs found in {}".format(log_dir)
 
   __create_num_threads_vs_jct_graph(num_threads_to_jcts, args.output_dir, phase="write")
   __create_num_threads_vs_jct_graph(num_threads_to_jcts, args.output_dir, phase="read")
@@ -73,7 +73,8 @@ def __parse_args():
 
   args = parser.parse_args()
   log_dir = args.log_dir
-  assert path.isdir(log_dir), "The supplied log directory does not exist or is a file: %s" % log_dir
+  assert path.isdir(log_dir), \
+    "The supplied log directory does not exist or is a file: {}".format(log_dir)
 
   if args.output_dir is None:
     args.output_dir = args.log_dir
@@ -125,7 +126,7 @@ def __create_num_threads_vs_jct_graph(num_threads_to_jcts, output_dir, phase):
     for write_jcts, read_jcts in num_threads_to_jcts.itervalues()
     for jct in (write_jcts if phase == "write" else read_jcts)])
   ymax = max_jct * 1.1
-  pyplot.title("Num threads per disk vs. JCT (%s phase)" % phase)
+  pyplot.title("Num threads per disk vs. JCT ({} phase)".format(phase))
   pyplot.xlabel("Num threads per disk")
   pyplot.ylabel("JCT (s)")
   pyplot.grid(b=True)
@@ -141,7 +142,7 @@ def __create_num_threads_vs_jct_graph(num_threads_to_jcts, output_dir, phase):
   pyplot.xticks(xrange(num_ticks), [""] + sorted(num_threads_to_jcts.keys()) + [""])
 
   # Save the graph as a PDF.
-  output_filepath = path.join(output_dir, "%s_phase_num_threads_vs_jct.pdf" % phase)
+  output_filepath = path.join(output_dir, "{}_phase_num_threads_vs_jct.pdf".format(phase))
   with backend_pdf.PdfPages(output_filepath) as pdf:
     pdf.savefig()
 

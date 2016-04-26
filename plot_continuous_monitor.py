@@ -54,7 +54,7 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
         break
       else:
         # There are some non-JSON lines at the beginning of the file.
-        print "Skipping non-JSON line at beginning of file: %s" % line
+        print "Skipping non-JSON line at beginning of file: {}".format(line)
         continue
     at_beginning = False
     time = json_data["Current Time"]
@@ -148,10 +148,10 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
         disks_to_index[disk_id] = len(data) + 1
 
       data.extend([
-        ("%s utilization" % disk_id, disk_util.total_utilization),
-        ("%s read throughput" % disk_id, disk_util.read_throughput),
-        ("%s write throughput" % disk_id, disk_util.write_throughput),
-        ("%s running disk monotasks" % disk_id, disk_util.running_disk_monotasks)
+        ("{} utilization".format(disk_id), disk_util.total_utilization),
+        ("{} read throughput".format(disk_id), disk_util.read_throughput),
+        ("{} write throughput".format(disk_id), disk_util.write_throughput),
+        ("{} running disk monotasks".format(disk_id), disk_util.running_disk_monotasks)
       ])
 
     continuous_monitor_data.append(data)

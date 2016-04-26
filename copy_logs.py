@@ -47,10 +47,10 @@ def copy_logs(argv):
     "ls -t /tmp/spark-events | head -n 1")
   print ret
   event_log_relative_filename = ret.strip("\n").strip("\r")
-  event_log_filename = "/tmp/spark-events/%s" % event_log_relative_filename
-  local_event_log_file = "%s_event_log" % opts.filename_prefix
-  print ("Copying event log from file %s on host %s back to %s" %
-    (event_log_filename, opts.driver_host, local_event_log_file))
+  event_log_filename = "/tmp/spark-events/{}".format(event_log_relative_filename)
+  local_event_log_file = "{}_event_log".format(opts.filename_prefix)
+  print "Copying event log from file {} on host {} back to {}".format(
+    event_log_filename, opts.driver_host, local_event_log_file)
   utils.scp_from(
     opts.driver_host,
     opts.identity_file,

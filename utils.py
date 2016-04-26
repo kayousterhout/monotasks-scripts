@@ -12,15 +12,14 @@ import plot_continuous_monitor
 
 # Copy a file from a given host through scp, throwing an exception if scp fails.
 def scp_from(host, identity_file, username, remote_file, local_file):
-  subprocess.check_call(
-    "scp -q -o StrictHostKeyChecking=no -i %s '%s@%s:%s' '%s'" %
-    (identity_file, username, host, remote_file, local_file), shell=True)
+  subprocess.check_call("scp -q -o StrictHostKeyChecking=no -i {} '{}@{}:{}' '{}'".format(
+    identity_file, username, host, remote_file, local_file), shell=True)
 
 def ssh_get_stdout(host, identity_file, username, command):
   if "ec2" in host:
-    command = "source /root/.bash_profile; %s" % command
-  ssh_command = ("ssh -t -o StrictHostKeyChecking=no -i %s %s@%s '%s'" %
-    (identity_file, username, host, command))
+    command = "source /root/.bash_profile; {}".format(command)
+  ssh_command = "ssh -t -o StrictHostKeyChecking=no -i {} {}@{} '{}'".format(
+    identity_file, username, host, command)
   return subprocess.Popen(ssh_command, stdout=subprocess.PIPE, shell=True).communicate()[0]
 
 def copy_latest_continuous_monitor(hostname, identity_file, filename_prefix, username):
@@ -35,10 +34,10 @@ def copy_latest_continuous_monitor(hostname, identity_file, filename_prefix, use
     identity_file,
     username,
     "ls -t /tmp/ | grep continuous_monitor | head -n 1").strip("\n").strip("\r")
-  continuous_monitor_filename = "/tmp/%s" % continuous_monitor_relative_filename
-  local_continuous_monitor_file = "%s_executor_monitor" % filename_prefix
-  print ("Copying continuous monitor from file %s on host %s back to %s" %
-    (continuous_monitor_filename, hostname, local_continuous_monitor_file))
+  continuous_monitor_filename = "/tmp/{}".format(continuous_monitor_relative_filename)
+  local_continuous_monitor_file = "{}_executor_monitor".format(filename_prefix)
+  print "Copying continuous monitor from file {} on host {} back to {}".format(
+    continuous_monitor_filename, hostname, local_continuous_monitor_file)
   scp_from(
     hostname,
     identity_file,
