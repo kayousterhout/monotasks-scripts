@@ -13,6 +13,7 @@ class DiskUtilization:
   def __init__(self, json_entry):
     assert(len(json_entry) == 1)
     self.disk_name, utilization_info = json_entry.popitem()
+    self.disk_name = str(self.disk_name)
     self.total_utilization = utilization_info["Disk Utilization"]
     self.read_throughput = utilization_info["Read Throughput"]
     self.write_throughput = utilization_info["Write Throughput"]
@@ -80,7 +81,7 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
       # Parse the number of currently running disk monotasks for each disk.
       for running_disk_monotasks_info in json_data["Running Disk Monotasks"]:
         running_disk_monotasks = running_disk_monotasks_info["Running And Queued Monotasks"]
-        disk_name = running_disk_monotasks_info["Disk Name"]
+        disk_name = running_disk_monotasks_info["Disk Name"].split("/")[-1]
         if disk_name in disk_to_utilization:
           disk_utilization = disk_to_utilization[disk_name]
           disk_utilization.running_disk_monotasks = running_disk_monotasks
