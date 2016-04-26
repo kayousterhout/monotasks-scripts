@@ -2,6 +2,7 @@ import inspect
 from os import path
 import subprocess
 
+LINE_TEMPLATE = "\"{}\" using 1:{} with l ls {} title \"{}\""
 
 def plot(cm_data, file_prefix, open_graphs, disk_to_index):
   """
@@ -10,7 +11,7 @@ def plot(cm_data, file_prefix, open_graphs, disk_to_index):
   of each plot
   """
   # Write continuous monitor data to tab deliminated data file.
-  out_filename = "%s_utilization" % file_prefix
+  out_filename = "{}_utilization".format(file_prefix)
   with open(out_filename, 'w') as out_file:
     for data in cm_data:
       write_data(out_file, [val[1] for val in data])
@@ -21,14 +22,14 @@ def plot(cm_data, file_prefix, open_graphs, disk_to_index):
   attributes = ['utilization', 'monotasks', 'memory']
 
   for attribute in attributes:
-    plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir)
+    plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir, disk_to_index)
 
   for disk_name, index in disk_to_index.iteritems():
     plot_single_disk(disk_name, index, file_prefix, open_graphs, scripts_dir, out_filename)
 
 
-def plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir):
-  """ Create a gnuplot file and associated pdf for a some attribute (like disk_utilization) """
+def plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir, disk_to_index):
+  """ Create a gnuplot file and associated pdf for a some attribute (like utilization) """
   data_filename = '{}_utilization'.format(file_prefix)
   plot_filename = '{}_{}.gp'.format(file_prefix, attribute)
   base_plot_filename = path.join(scripts_dir, 'gnuplot_files/plot_{}_base.gp'.format(attribute))
@@ -37,6 +38,13 @@ def plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir):
     for line in open(base_plot_filename, 'r'):
       new_line = line.replace('__OUT_FILENAME__', pdf_filename).replace('__NAME__', data_filename)
       plot_file.write(new_line)
+
+    color = 6
+    if attribute == "utilization":
+      for disk, index in sorted(disk_to_index.iteritems()):
+        plot_file.write(",\\\n{}".format(LINE_TEMPLATE.format(
+          data_filename, index, color, "{} Utilization".format(disk))))
+        color += 1
 
   subprocess.check_call('gnuplot {}'.format(plot_filename), shell=True)
   if open_graphs:
@@ -54,16 +62,17 @@ def plot_single_disk(disk_to_plot, start_index, file_prefix, open_graphs, script
       new_line = line.replace('__OUT_FILENAME__', disk_plot_output)
       disk_plot_file.write(new_line)
     # Write lines to plot the information about one disk.
-    line_template_y1 = "\"%s\" using 1:%d with l ls %d title \"%s\""
-    line_template_y2 = "%s axes x1y2" % line_template_y1
+    line_template_y2 = "{} axes x1y2".format(LINE_TEMPLATE)
     disk_plot_file.write("plot ")
-    disk_plot_file.write(line_template_y1 % (util_filename, start_index, 2, "Utilization"))
+    disk_plot_file.write(LINE_TEMPLATE.format(util_filename, start_index, 2, "Utilization"))
     disk_plot_file.write(",\\\n")
-    disk_plot_file.write(line_template_y2 % (util_filename, start_index + 1, 3, "Read Throughput"))
+    disk_plot_file.write(line_template_y2.format(
+      util_filename, start_index + 1, 3, "Read Throughput"))
     disk_plot_file.write(",\\\n")
-    disk_plot_file.write(line_template_y2 % (util_filename, start_index + 2, 4, "Write Throughput"))
+    disk_plot_file.write(line_template_y2.format(
+      util_filename, start_index + 2, 4, "Write Throughput"))
     disk_plot_file.write(",\\\n")
-    disk_plot_file.write(line_template_y1 % (util_filename, start_index + 3, 5, "Monotasks"))
+    disk_plot_file.write(LINE_TEMPLATE.format(util_filename, start_index + 3, 5, "Monotasks"))
 
   subprocess.check_call('gnuplot {}'.format(disk_plot_filename), shell=True)
   if open_graphs:

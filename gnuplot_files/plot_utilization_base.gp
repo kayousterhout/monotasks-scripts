@@ -26,10 +26,8 @@ set key above
 set ylabel "Utilization" offset 1
 set xlabel "Time"
 
-plot "__NAME__" using 1:2 with l ls 3 title "CPU Utilization",\
-"__NAME__" using 1:3 with l ls 4 title "Network Utilization (recv'd)",\
-"__NAME__" using 1:4 with l ls 5 title "Network Utilization (trans'd)",\
-"__NAME__" using 1:7 with l ls 6 title "GC fraction",\
-"__NAME__" using 1:11 with l ls 7 title "System CPU Utilization",\
-"__NAME__" using 1:16 with l ls 8 title "xvdb Utiliaztion",\
-"__NAME__" using 1:20 with l ls 9 title "xvdf Utilization"
+plot "__NAME__" using 1:2 with l ls 1 title "CPU Utilization",\
+"__NAME__" using 1:3 with l ls 2 title "Network Utilization (recv'd)",\
+"__NAME__" using 1:4 with l ls 3 title "Network Utilization (trans'd)",\
+"__NAME__" using 1:7 with l ls 4 title "GC fraction",\
+"__NAME__" using 1:11 with l ls 5 title "System CPU Utilization"
