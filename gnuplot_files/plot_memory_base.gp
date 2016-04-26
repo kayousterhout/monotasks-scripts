@@ -20,8 +20,7 @@ set output "__OUT_FILENAME__"
 set style fill solid border -1
 set grid xtics
 set grid ytics
-set xtics 100000
-set yrange [0:100]
+set yrange [0:]
 set key above
 
 set ylabel "Free Memory (GiB)" offset 1

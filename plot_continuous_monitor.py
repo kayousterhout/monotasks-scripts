@@ -142,10 +142,10 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
     # Append info about each disk (in sorted order, so that the standard EC2 disks appear in
     # predictable order).
     for disk_id, disk_util in sorted(disk_to_utilization.iteritems()):
-      # This is done redundantly for each line in the continuous monitor, but they should all be
-      # the same, so this should be an issue. Saving the index needs to happen before the
-      # disk's utilization information gets appended to data below.
-      disks_to_index[disk_id] = len(data) + 1
+      # Saving the index needs to happen before the disk's utilization information gets appended to
+      # data below.
+      if disk_id not in disks_to_index:
+        disks_to_index[disk_id] = len(data) + 1
 
       data.extend([
         ("%s utilization" % disk_id, disk_util.total_utilization),

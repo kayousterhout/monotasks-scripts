@@ -21,12 +21,11 @@ set style fill solid border -1
 set grid xtics
 set grid ytics
 set y2tics
-set xtics 1000000
-set yrange [0:2.5]
-set y2range [0:150000000]
+set yrange [0:]
+set y2range [0:]
 set key above
 
-set ylabel "Utilization" offset 1
+set ylabel "Utilization, # Running" offset 1
 set y2label "Throughput"
 set xlabel "Time"
 
