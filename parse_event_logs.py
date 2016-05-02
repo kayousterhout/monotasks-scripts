@@ -64,6 +64,8 @@ class Analyzer:
         for (stage_id, stage) in job.stages.iteritems()]
       self.logger.debug("Job %s has stages: %s and runtime %sm (%ss)" %
         (job_id, stage_str, job_runtime / 60., job_runtime))
+      for stage_id, stage in job.stages.iteritems():
+        stage.ideal_time_utilization(cores_per_machine = 8)
 
   def write_summary_file(self, values, filename):
     summary_file = open(filename, "w")
