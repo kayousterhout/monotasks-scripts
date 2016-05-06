@@ -1,5 +1,8 @@
 import logging
 
+import metrics
+
+
 class Task:
   def __init__(self, data):
     self.initialize_from_json(data)
@@ -38,6 +41,8 @@ class Task:
     self.executor_deserialize_time = task_metrics["Executor Deserialize Time"]
     self.result_serialization_time = task_metrics["Result Serialization Time"]
     self.gc_time = task_metrics["JVM GC Time"]
+    self.end_gc_millis = task_metrics.get("JVM GC Time Total", 0.)
+    self.start_gc_millis = self.end_gc_millis - self.gc_time
     self.executor_id = task_info["Executor ID"]
 
     self.disk_utilization = {}
@@ -45,10 +50,17 @@ class Task:
     if DISK_UTILIZATION_KEY in task_metrics:
       for dic in task_metrics[DISK_UTILIZATION_KEY]["Device Name To Utilization"]:
         for device_name, block_utilization in dic.iteritems():
-          self.disk_utilization[device_name] = (
+          self.disk_utilization[device_name] = metrics.DiskUtilization(
+            block_utilization.get("Start Counters", {}),
+            block_utilization.get("End Counters", {}),
             block_utilization["Disk Utilization"],
             block_utilization["Read Throughput"],
             block_utilization["Write Throughput"])
+
+    self.start_network_transmit_idle_millis = task_metrics.get(
+      "Start Network Transmit Total Idle Millis", 0.)
+    self.end_network_transmit_idle_millis = task_metrics.get(
+      "End Network Transmit Total Idle Millis", 0.)
 
     self.network_bytes_transmitted_ps = 0
     self.network_bytes_received_ps = 0

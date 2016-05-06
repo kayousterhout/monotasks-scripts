@@ -1,4 +1,7 @@
+
+import metrics
 from task import Task
+
 
 class Stage:
   def __init__(self):
@@ -39,13 +42,29 @@ class Stage:
         max_index = i
     return "%s\n    Longest Task: %s" % (self, self.tasks[i])
 
-  def load_balancing_badness(self):
+  def get_executor_id_to_resource_metrics(self):
+    """Compiles a description of this stage's resource usage on each executor.
+
+    Returns a mapping from executor id to an ExecutorResourceMetrics object containing the
+    executor's CPU, network, and GC resource usage while this stage was running.
+    """
+    return {executor: metrics.ExecutorResourceMetrics.get_resource_metrics_for_executor_tasks(tasks)
+      for executor, tasks in self.get_executor_id_to_tasks().iteritems()}
+
+  def get_executor_id_to_tasks(self):
+    """
+    Returns a mapping from executor id to a list of all the tasks from this stage that ran on that
+    executor.
+    """
     executor_id_to_tasks = {}
     for task in self.tasks:
       if task.executor_id not in executor_id_to_tasks:
         executor_id_to_tasks[task.executor_id] = []
       executor_id_to_tasks[task.executor_id].append(task)
+    return executor_id_to_tasks
 
+  def load_balancing_badness(self):
+    executor_id_to_tasks = self.get_executor_id_to_tasks()
     total_time = 0
     for executor_id, tasks in executor_id_to_tasks.iteritems():
       min_start_time = min([t.start_time for t in tasks])
@@ -120,12 +139,7 @@ class Stage:
 
   def ideal_time_utilization(self, cores_per_machine):
     """ Returns the stage's completion time if all executors had been fully utilized."""
-    executor_id_to_tasks = {}
-    for task in self.tasks:
-      if task.executor_id not in executor_id_to_tasks:
-        executor_id_to_tasks[task.executor_id] = []
-      executor_id_to_tasks[task.executor_id].append(task)
-
+    executor_id_to_tasks = self.get_executor_id_to_tasks()
     total_jiffies = 0
     for executor_id, executor_tasks in executor_id_to_tasks.iteritems():
       start_jiffies = min([task.start_total_cpu_jiffies for task in executor_tasks])

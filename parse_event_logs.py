@@ -144,11 +144,12 @@ class Analyzer:
             (task.process_user_cpu_utilization / 8., task.runtime()))
           process_system_cpu_utilizations.append(
             (task.process_system_cpu_utilization / 8., task.runtime()))
-          for name, block_device_numbers in task.disk_utilization.iteritems():
+          for name, disk_utilization in task.disk_utilization.iteritems():
             if name in ["xvdb", "xvdf"]:
-              disk_utilizations.append((block_device_numbers[0], task.runtime()))
-              disk_throughputs.append(
-                (block_device_numbers[1] + block_device_numbers[2], task.runtime()))
+              disk_utilizations.append((disk_utilization.utilization, task.runtime()))
+              disk_throughputs.append((
+                disk_utilization.read_throughput_Bps + disk_utilization.write_throughput_Bps,
+                task.runtime()))
           received_utilization = (task.network_bytes_received_ps /
             NETWORK_BANDWIDTH_BPS, task.runtime())
           network_utilizations.append(received_utilization)
@@ -180,6 +181,39 @@ class Analyzer:
     self.__write_utilization_summary_file(
       process_system_cpu_utilizations, "%s_%s" % (prefix, "cpu_process_system_utilization"))
 
+  def output_stage_resource_metrics(self, filename):
+    """
+    Writes a single file with the CPU, network, and disk resources used by each executor during each
+    stage.
+    """
+    executor_id_to_host = self.get_executor_id_to_host()
+    with open("{}_{}".format(filename, "stage_resource_metrics"), "w") as output:
+      for job_id, job in sorted(self.jobs.iteritems()):
+        for stage_id, stage in sorted(job.stages.iteritems()):
+          executor_to_resource_metrics = stage.get_executor_id_to_resource_metrics()
+          for executor_id, resource_metrics in sorted(executor_to_resource_metrics.iteritems()):
+            output.write("Job {}, Stage {}, Executor {} ({}):\n{}\n".format(
+              job_id, stage_id, executor_id, executor_id_to_host[executor_id], resource_metrics))
+
+  def output_job_resource_metrics(self, filename):
+    """
+    Writes a single file with the CPU, network, and disk resources used by each executor during each
+    job.
+    """
+    executor_id_to_host = self.get_executor_id_to_host()
+    with open("{}_{}".format(filename, "job_resource_metrics"), "w") as output:
+      for job_id, job in sorted(self.jobs.iteritems()):
+        executor_to_resource_metrics = job.get_executor_id_to_resource_metrics()
+        for executor_id, resource_metrics in sorted(executor_to_resource_metrics.iteritems()):
+          output.write("Job {}, Executor {} ({}):\n{}\n".format(
+            job_id, executor_id, executor_id_to_host[executor_id], resource_metrics))
+
+  def get_executor_id_to_host(self):
+    return {task.executor_id: task.executor
+      for job in self.jobs.itervalues()
+      for task in job.all_tasks()}
+
+
 def main(argv):
   parser = OptionParser(usage="parse_logs.py [options] <log filename>")
   parser.add_option(
@@ -204,6 +238,8 @@ def main(argv):
   analyzer.output_utilizations(filename)
   analyzer.output_load_balancing_badness(filename)
   analyzer.output_runtimes(filename)
+  analyzer.output_job_resource_metrics(filename)
+  analyzer.output_stage_resource_metrics(filename)
 
 if __name__ == "__main__":
   main(sys.argv[1:])

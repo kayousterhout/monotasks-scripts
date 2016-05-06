@@ -43,6 +43,21 @@ class Job:
     actual_finish_time = max([s.finish_time() for s in self.stages.values()])
     return actual_finish_time - actual_start_time
 
+  def get_executor_id_to_resource_metrics(self):
+    """
+    Returns a mapping from executor id to a description of how each of its resources was used while
+    this job's tasks were running on that executor.
+    """
+    executor_to_job_metrics = {}
+    # Aggregate metrics from the job's stages
+    for stage in self.stages.itervalues():
+      for executor, stage_metrics in stage.get_executor_id_to_resource_metrics().iteritems():
+        if executor in executor_to_job_metrics:
+          executor_to_job_metrics[executor].add_metrics(stage_metrics)
+        else:
+          executor_to_job_metrics[executor] = stage_metrics
+    return executor_to_job_metrics
+
   def write_data_to_file(self, data, file_handle, newline=True):
     stringified_data = [str(x) for x in data]
     if newline:
