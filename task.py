@@ -51,11 +51,11 @@ class Task:
       for dic in task_metrics[DISK_UTILIZATION_KEY]["Device Name To Utilization"]:
         for device_name, block_utilization in dic.iteritems():
           self.disk_utilization[device_name] = metrics.DiskUtilization(
-            block_utilization.get("Start Counters", {}),
-            block_utilization.get("End Counters", {}),
-            block_utilization["Disk Utilization"],
-            block_utilization["Read Throughput"],
-            block_utilization["Write Throughput"])
+            start_counters=block_utilization.get("Start Counters", {}),
+            end_counters=block_utilization.get("End Counters", {}),
+            utilization=block_utilization["Disk Utilization"],
+            read_throughput_Bps=block_utilization["Read Throughput"],
+            write_throughput_Bps=block_utilization["Write Throughput"])
 
     self.start_network_transmit_idle_millis = task_metrics.get(
       "Start Network Transmit Total Idle Millis", 0.)

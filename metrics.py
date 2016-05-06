@@ -14,8 +14,6 @@
 # limitations under the License.
 #
 
-import abc
-
 MILLIS_PER_JIFFY = 10
 BYTES_PER_SECTOR = 512
 
@@ -114,23 +112,31 @@ class ExecutorResourceMetrics(object):
 
     cpu_millis = (last_task_to_finish.end_total_cpu_jiffies -
       first_task_to_start.start_total_cpu_jiffies) * MILLIS_PER_JIFFY
-    total_transmit_idle_millis = (last_task_to_finish.end_network_transmit_idle_millis -
+    transmit_idle_millis = (last_task_to_finish.end_network_transmit_idle_millis -
       first_task_to_start.start_network_transmit_idle_millis)
-    network_metrics = NetworkMetrics(elapsed_millis, total_transmit_idle_millis)
+    network_metrics = NetworkMetrics(
+      elapsed_millis=elapsed_millis,
+      transmit_idle_millis=transmit_idle_millis)
 
     disk_name_to_metrics = {}
     for disk_name, disk_utilization in first_task_to_start.disk_utilization.iteritems():
       disk_name_to_metrics[disk_name] = DiskMetrics(
-        elapsed_millis,
-        first_task_to_start.disk_utilization[disk_name].start_counters,
-        last_task_to_finish.disk_utilization[disk_name].end_counters)
+        elapsed_millis=elapsed_millis,
+        start_counters=first_task_to_start.disk_utilization[disk_name].start_counters,
+        end_counters=last_task_to_finish.disk_utilization[disk_name].end_counters)
 
     gc_millis = last_task_to_finish.end_gc_millis - first_task_to_start.start_gc_millis
-    return ExecutorResourceMetrics(len(tasks), elapsed_millis, cpu_millis, network_metrics,
-      disk_name_to_metrics, gc_millis)
+    return ExecutorResourceMetrics(
+      elapsed_millis=elapsed_millis,
+      num_tasks=len(tasks),
+      cpu_millis=cpu_millis,
+      network_metrics=network_metrics,
+      disk_name_to_metrics=disk_name_to_metrics,
+      gc_millis=gc_millis)
 
   def __repr__(self):
     return (
+      "elapsed millis: {}\n".format(self.elapsed_millis) +
       "num tasks: {}\n".format(self.num_tasks) +
       "CPU millis: {}\n".format(self.cpu_millis) +
       str(self.network_metrics) +
