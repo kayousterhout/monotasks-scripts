@@ -62,13 +62,12 @@ class Task:
     self.end_network_transmit_idle_millis = task_metrics.get(
       "End Network Transmit Total Idle Millis", 0.)
 
-    self.network_bytes_transmitted_ps = 0
-    self.network_bytes_received_ps = 0
-    NETWORK_UTILIZATION_KEY = "Network Utilization"
-    if NETWORK_UTILIZATION_KEY in task_metrics:
-      network_utilization = task_metrics[NETWORK_UTILIZATION_KEY]
-      self.network_bytes_transmitted_ps = network_utilization["Bytes Transmitted Per Second"]
-      self.network_bytes_received_ps = network_utilization["Bytes Received Per Second"]
+    network_util_info = task_metrics.get("Network Utilization", {})
+    self.network_utilization = metrics.NetworkUtilization(
+      start_counters=network_util_info.get("Start Counters", 0.),
+      end_counters=network_util_info.get("End Counters", 0.),
+      bytes_transmitted_ps=network_util_info.get("Bytes Transmitted Per Second", 0.),
+      bytes_received_ps=network_util_info.get("Bytes Received Per Second", 0.))
 
     self.process_cpu_utilization = 0
     self.process_user_cpu_utilization = 0

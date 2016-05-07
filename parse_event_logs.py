@@ -150,10 +150,10 @@ class Analyzer:
               disk_throughputs.append((
                 disk_utilization.read_throughput_Bps + disk_utilization.write_throughput_Bps,
                 task.runtime()))
-          received_utilization = (task.network_bytes_received_ps /
+          received_utilization = (task.network_utilization.bytes_received_ps /
             NETWORK_BANDWIDTH_BPS, task.runtime())
           network_utilizations.append(received_utilization)
-          transmitted_utilization = (task.network_bytes_transmitted_ps /
+          transmitted_utilization = (task.network_utilization.bytes_transmitted_ps /
             NETWORK_BANDWIDTH_BPS, task.runtime())
           network_utilizations.append(transmitted_utilization)
           network_utilizations_recv_only.append(received_utilization)
@@ -192,7 +192,7 @@ class Analyzer:
         for stage_id, stage in sorted(job.stages.iteritems()):
           executor_to_resource_metrics = stage.get_executor_id_to_resource_metrics()
           for executor_id, resource_metrics in sorted(executor_to_resource_metrics.iteritems()):
-            output.write("Job {}, Stage {}, Executor {} ({}):\n{}\n".format(
+            output.write("Job {}, Stage {}, Executor {} ({}):\n{}\n\n".format(
               job_id, stage_id, executor_id, executor_id_to_host[executor_id], resource_metrics))
 
   def output_job_resource_metrics(self, filename):
@@ -205,7 +205,7 @@ class Analyzer:
       for job_id, job in sorted(self.jobs.iteritems()):
         executor_to_resource_metrics = job.get_executor_id_to_resource_metrics()
         for executor_id, resource_metrics in sorted(executor_to_resource_metrics.iteritems()):
-          output.write("Job {}, Executor {} ({}):\n{}\n".format(
+          output.write("Job {}, Executor {} ({}):\n{}\n\n".format(
             job_id, executor_id, executor_id_to_host[executor_id], resource_metrics))
 
   def get_executor_id_to_host(self):
