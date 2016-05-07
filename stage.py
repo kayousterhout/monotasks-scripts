@@ -164,3 +164,36 @@ class Stage:
       self.start_time = min(self.start_time, task.start_time)
 
     self.tasks.append(task)
+
+  def get_ideal_times_from_metrics(self):
+    """Returns a 3-tuple containing the ideal CPU, network, and disk times (s) for this stage.
+
+    The ideal times are calculated by assuming that the CPU, network, and disk tasks can be
+    perfectly scheduled to take advantage of the cluster's available resources.
+    """
+    total_cpu_millis = 0
+    total_network_bytes_transmitted = 0
+    total_network_throughput_Bps = 0
+    total_disk_bytes_read_written = 0
+    total_disk_throughput_Bps = 0
+
+    executor_id_to_metrics = self.get_executor_id_to_resource_metrics()
+    for executor_metrics in executor_id_to_metrics.itervalues():
+      total_cpu_millis += executor_metrics.cpu_metrics.cpu_millis
+
+      network_metrics = executor_metrics.network_metrics
+      total_network_bytes_transmitted += network_metrics.bytes_transmitted
+      total_network_throughput_Bps += network_metrics.effective_transmit_throughput_Bps
+
+      for disk_name, disk_metrics in executor_metrics.disk_name_to_metrics.iteritems():
+        # We only consider disks that are used as Spark or HDFS data directories.
+        if disk_name in ["xvdb", "xvdc", "xvdf"]:
+          total_disk_bytes_read_written += (disk_metrics.bytes_read + disk_metrics.bytes_written)
+          total_disk_throughput_Bps += disk_metrics.effective_throughput_Bps
+
+    num_executors = len(executor_id_to_metrics)
+    num_cores_per_executor = 8
+    ideal_cpu_s = float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
+    ideal_network_s = float(total_network_bytes_transmitted) / total_network_throughput_Bps
+    ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
+    return (ideal_cpu_s, ideal_network_s, ideal_disk_s)

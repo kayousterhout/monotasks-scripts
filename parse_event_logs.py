@@ -64,8 +64,6 @@ class Analyzer:
         for (stage_id, stage) in job.stages.iteritems()]
       self.logger.debug("Job %s has stages: %s and runtime %sm (%ss)" %
         (job_id, stage_str, job_runtime / 60., job_runtime))
-      for stage_id, stage in job.stages.iteritems():
-        stage.ideal_time_utilization(cores_per_machine = 8)
 
   def write_summary_file(self, values, filename):
     summary_file = open(filename, "w")
@@ -213,6 +211,28 @@ class Analyzer:
       for job in self.jobs.itervalues()
       for task in job.all_tasks()}
 
+  def output_ideal_time_metrics(self, filename):
+    """
+    Writes a single file with the CPU, network, and disk ideal times for each stage of each job.
+    Then, ideal job runtime is reported as the sum of the runtimes of the bottleneck resource in
+    each of the job's stages.
+    """
+    with open("{}_{}".format(filename, "ideal_time_metrics"), "w") as output:
+      output.write("Ideal times:\n\n")
+      for job_id, job in self.jobs.iteritems():
+        job_runtime_s = 0
+        for stage_id, stage in job.stages.iteritems():
+          ideal_cpu_millis, ideal_network_millis, ideal_disk_millis = (
+            stage.get_ideal_times_from_metrics())
+          job_runtime_s += max(ideal_cpu_millis, ideal_network_millis, ideal_disk_millis)
+
+          output.write(
+            "Job {}, Stage {}:\n".format(job_id, stage_id) +
+            "\tcpu: {:.2f} s\n".format(ideal_cpu_millis) +
+            "\tnetwork: {:.2f} s\n".format(ideal_network_millis) +
+            "\tdisk: {:.2f} s\n".format(ideal_disk_millis)
+          )
+        output.write("Job {} runtime: {:.2f} s\n\n".format(job_id, job_runtime_s))
 
 def main(argv):
   parser = OptionParser(usage="parse_logs.py [options] <log filename>")
@@ -240,6 +260,7 @@ def main(argv):
   analyzer.output_runtimes(filename)
   analyzer.output_job_resource_metrics(filename)
   analyzer.output_stage_resource_metrics(filename)
+  analyzer.output_ideal_time_metrics(filename)
 
 if __name__ == "__main__":
   main(sys.argv[1:])
