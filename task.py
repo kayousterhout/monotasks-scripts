@@ -98,6 +98,10 @@ class Task:
           end_counters["Total System Jiffies"])
         self.end_cpu_utilization_millis = end_counters["Time Milliseconds"]
 
+    self.hdfs_deser_decomp_millis = task_metrics.get(
+      "HDFS Deserialization/Decompression Millis", 0.)
+    self.hdfs_ser_comp_millis = task_metrics.get("HDFS Serialization/Compression Millis", 0.)
+
     self.shuffle_write_time = 0
     self.shuffle_mb_written = 0
     SHUFFLE_WRITE_METRICS_KEY = "Shuffle Write Metrics"

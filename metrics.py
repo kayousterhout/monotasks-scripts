@@ -28,15 +28,25 @@ TOTAL_IO_MILLIS_KEY = "Millis Total"
 
 class CpuMetrics(object):
 
-  def __init__(self, elapsed_millis, cpu_millis, num_cores):
+  def __init__(
+      self,
+      elapsed_millis,
+      cpu_millis,
+      num_cores,
+      hdfs_deser_decomp_millis,
+      hdfs_ser_comp_millis):
     self.elapsed_millis = elapsed_millis
     self.cpu_millis = cpu_millis
     self.num_cores = num_cores
+    self.hdfs_deser_decomp_millis = hdfs_deser_decomp_millis
+    self.hdfs_ser_comp_millis = hdfs_ser_comp_millis
     self.__calculate_util()
 
   def add_metrics(self, other_metrics):
     self.elapsed_millis += other_metrics.elapsed_millis
     self.cpu_millis += other_metrics.cpu_millis
+    self.hdfs_deser_decomp_millis += other_metrics.hdfs_deser_decomp_millis
+    self.hdfs_ser_comp_millis += other_metrics.hdfs_ser_comp_millis
     self.__calculate_util()
 
   def __calculate_util(self):
@@ -45,8 +55,10 @@ class CpuMetrics(object):
   def __repr__(self):
     return (
       "cpu metrics:\n" +
-      "\tcpu millis:\n".format(self.cpu_millis) +
-      "\tutilization: {:.2f}%\n".format(self.utilization * 100)
+      "\tutilization: {:.2f}%\n".format(self.utilization * 100) +
+      "\tHDFS deser/decomp , ser/comp: {:.2f} s , {:.2f} s\n".format(
+        float(self.hdfs_deser_decomp_millis) / 1000,
+        float(self.hdfs_ser_comp_millis) / 1000)
     )
 
 
@@ -170,7 +182,13 @@ class ExecutorResourceMetrics(object):
 
     cpu_millis = (last_task_to_finish.end_total_cpu_jiffies -
       first_task_to_start.start_total_cpu_jiffies) * MILLIS_PER_JIFFY
-    cpu_metrics = CpuMetrics(elapsed_millis=elapsed_millis, cpu_millis=cpu_millis, num_cores=8)
+    cpu_metrics = CpuMetrics(
+      elapsed_millis=elapsed_millis,
+      cpu_millis=cpu_millis,
+      num_cores=8,
+      hdfs_deser_decomp_millis=sum([t.hdfs_deser_decomp_millis for t in tasks]),
+      hdfs_ser_comp_millis=sum([t.hdfs_ser_comp_millis for t in tasks])
+    )
 
     transmit_idle_millis = (last_task_to_finish.end_network_transmit_idle_millis -
       first_task_to_start.start_network_transmit_idle_millis)
@@ -205,7 +223,7 @@ class ExecutorResourceMetrics(object):
       "time (start,elapsed,end): {} ms, {} ms, {} ms\n".format(
         self.start_millis, self.elapsed_millis, self.end_millis) +
       "num tasks: {}\n".format(self.num_tasks) +
-      "cpu utilization: {:.2f}%\n".format(self.cpu_metrics.utilization * 100) +
+      str(self.cpu_metrics) +
       str(self.network_metrics) +
       "".join(["{} {}".format(disk_name, disk_metrics)
         for disk_name, disk_metrics in self.disk_name_to_metrics.iteritems()]) +
