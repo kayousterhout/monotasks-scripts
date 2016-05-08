@@ -99,7 +99,6 @@ class DiskMetrics(object):
       start_counters.get(MILLIS_WRITING_KEY, 0.))
     self.total_io_millis = (end_counters.get(TOTAL_IO_MILLIS_KEY, 0.) -
       start_counters.get(TOTAL_IO_MILLIS_KEY, 0.))
-    self.__calculate_util_and_throughput()
 
   def add_metrics(self, other_metrics):
     self.elapsed_millis += other_metrics.elapsed_millis
@@ -108,20 +107,23 @@ class DiskMetrics(object):
     self.bytes_written += other_metrics.bytes_written
     self.millis_writing += other_metrics.millis_writing
     self.total_io_millis += other_metrics.total_io_millis
-    self.__calculate_util_and_throughput()
 
-  def __calculate_util_and_throughput(self):
-    self.utilization = float(self.total_io_millis) / self.elapsed_millis
-    self.effective_throughput_Bps = (
-      float(self.bytes_read + self.bytes_written) / self.total_io_millis) * 1000
+  def utilization(self):
+    return float(self.total_io_millis) / self.elapsed_millis
+
+  def effective_throughput_Bps(self):
+    if self.total_io_millis == 0:
+      return 0
+    else:
+      return (float(self.bytes_read + self.bytes_written) / self.total_io_millis) * 1000
 
   def __repr__(self):
     return (
       "disk metrics:\n" +
       "\tdata transferred (read,written): {} , {}\n".format(
         utils.bytes_to_string(self.bytes_read), utils.bytes_to_string(self.bytes_written)) +
-      "\tutilization: {:.2f}%\n".format(self.utilization * 100) +
-      "\teffective throughput: {}/s\n".format(utils.bytes_to_string(self.effective_throughput_Bps))
+      "\tutilization: {:.2f}%\n".format(self.utilization() * 100) +
+      "\teffective throughput: {}/s\n".format(utils.bytes_to_string(self.effective_throughput_Bps()))
     )
 
 

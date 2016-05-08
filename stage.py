@@ -1,3 +1,4 @@
+import logging
 
 import metrics
 from task import Task
@@ -189,11 +190,17 @@ class Stage:
         # We only consider disks that are used as Spark or HDFS data directories.
         if disk_name in ["xvdb", "xvdc", "xvdf"]:
           total_disk_bytes_read_written += (disk_metrics.bytes_read + disk_metrics.bytes_written)
-          total_disk_throughput_Bps += disk_metrics.effective_throughput_Bps
+          total_disk_throughput_Bps += disk_metrics.effective_throughput_Bps()
 
     num_executors = len(executor_id_to_metrics)
     num_cores_per_executor = 8
     ideal_cpu_s = float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
     ideal_network_s = float(total_network_bytes_transmitted) / total_network_throughput_Bps
-    ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
+    if total_disk_throughput_Bps > 0:
+      ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
+    else:
+      ideal_disk_s = 0
+      logging.getLogger("Stage").warning(
+        "Outputting 0 disk seconds because throughput while writing {} bytes was 0.".format(
+          total_disk_bytes_read_written))
     return (ideal_cpu_s, ideal_network_s, ideal_disk_s)

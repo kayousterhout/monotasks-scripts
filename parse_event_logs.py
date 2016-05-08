@@ -230,9 +230,14 @@ class Analyzer:
             "Job {}, Stage {}:\n".format(job_id, stage_id) +
             "\tcpu: {:.2f} s\n".format(ideal_cpu_millis) +
             "\tnetwork: {:.2f} s\n".format(ideal_network_millis) +
-            "\tdisk: {:.2f} s\n".format(ideal_disk_millis)
+            "\tdisk: {:.2f} s\n".format(ideal_disk_millis) +
+            "\tactual: {:.2f} s\n".format(stage.runtime() / 1000.)
           )
-        output.write("Job {} runtime: {:.2f} s\n\n".format(job_id, job_runtime_s))
+        output.write("Job {} ideal runtime: {:.2f} s\n".format(job_id, job_runtime_s))
+        output.write("Job {} actual runtime: {:.2f} s\n".format(job_id, job.runtime() / 1000.))
+        total_stage_runtime_s = sum([s.runtime() for s_id, s in job.stages.iteritems()]) / 1000.
+        output.write("Job {} total stage runtime: {:.2f} s\n\n".format(
+          job_id, total_stage_runtime_s))
 
 def main(argv):
   parser = OptionParser(usage="parse_logs.py [options] <log filename>")
