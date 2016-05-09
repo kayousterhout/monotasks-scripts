@@ -195,7 +195,15 @@ class Stage:
     num_executors = len(executor_id_to_metrics)
     num_cores_per_executor = 8
     ideal_cpu_s = float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
-    ideal_network_s = float(total_network_bytes_transmitted) / total_network_throughput_Bps
+
+    # Compute how many bytes the job thinks it sent over the network. If that's
+    # 0, all of the network traffic was control messages (and not related to the job's
+    # completion time) so the ideal network time is 0.
+    job_transmitted_bytes = sum([t.remote_mb_read for t in self.tasks if t.has_fetch])
+    if job_transmitted_bytes > 0:
+      ideal_network_s = float(total_network_bytes_transmitted) / total_network_throughput_Bps
+    else:
+      ideal_network_s = 0
     if total_disk_throughput_Bps > 0:
       ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
     else:
