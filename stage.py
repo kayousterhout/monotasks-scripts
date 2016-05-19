@@ -127,11 +127,14 @@ class Stage:
       (ideal_compute_millis, ideal_disk_millis, ideal_network_millis, ideal_millis, self.runtime()))
     return ideal_millis
 
+  def get_network_mb(self):
+    return sum([t.remote_mb_read for t in self.tasks if t.has_fetch])
+
   def __get_ideal_network_time(self, num_machines):
     """Returns the ideal time it would take all of the stage's network transfers to complete."""
     # The network time is harder to compute because the parallelism varies. Just estimate
     # it based on an ideal link bandwidth.
-    total_network_bytes = sum([t.remote_mb_read for t in self.tasks if t.has_fetch])
+    total_network_bytes = self.get_network_mb()
     # Assume a 1gb network.
     network_bandwith_mb_per_second = 125.
     ideal_network_seconds = total_network_bytes / (num_machines * network_bandwith_mb_per_second)
@@ -199,8 +202,7 @@ class Stage:
     # Compute how many bytes the job thinks it sent over the network. If that's
     # 0, all of the network traffic was control messages (and not related to the job's
     # completion time) so the ideal network time is 0.
-    job_transmitted_bytes = sum([t.remote_mb_read for t in self.tasks if t.has_fetch])
-    if job_transmitted_bytes > 0:
+    if self.get_network_mb() > 0:
       ideal_network_s = float(total_network_bytes_transmitted) / total_network_throughput_Bps
     else:
       ideal_network_s = 0
