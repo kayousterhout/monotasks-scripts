@@ -225,11 +225,12 @@ class Analyzer:
           ideal_cpu_millis, ideal_network_millis, ideal_disk_millis = (
             stage.get_ideal_times_from_metrics())
           job_runtime_s += max(ideal_cpu_millis, ideal_network_millis, ideal_disk_millis)
+          network_mbits = stage.get_network_mb()
 
           output.write(
             "Job {}, Stage {}:\n".format(job_id, stage_id) +
             "\tcpu: {:.2f} s\n".format(ideal_cpu_millis) +
-            "\tnetwork: {:.2f} s\n".format(ideal_network_millis) +
+            "\tnetwork: {:.2f} s ({} mb)\n".format(ideal_network_millis, network_mbits) +
             "\tdisk: {:.2f} s\n".format(ideal_disk_millis) +
             "\tactual: {:.2f} s\n".format(stage.runtime() / 1000.)
           )
