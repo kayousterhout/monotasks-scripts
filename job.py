@@ -4,8 +4,9 @@ import logging
 import stage
 
 class Job:
-  def __init__(self, id):
+  def __init__(self, id, name):
     self.id = id
+    self.name = name
     self.logger = logging.getLogger("Job")
     # Map of stage IDs to Stages.
     self.stages = collections.defaultdict(stage.Stage)

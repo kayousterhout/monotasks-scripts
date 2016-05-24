@@ -39,6 +39,14 @@ class Analyzer:
       if event_type == "SparkListenerJobStart":
         stage_ids = json_data["Stage IDs"]
         job_id = json_data["Job ID"]
+        # Use the name of the stage with the highest ID as the job's name (this seems to be
+        # what the Spark UI does).
+        max_stage_id = max([int(id) for id in stage_ids])
+        for stage_info in json_data["Stage Infos"]:
+          print max_stage_id, stage_info["Stage ID"]
+          if int(stage_info["Stage ID"]) == max_stage_id:
+            # Use the name of the stage to set the name of the job.
+            self.jobs[job_id] = Job(job_id, stage_info["Stage Name"])
         for stage_id in stage_ids:
           if stage_id not in self.jobs_for_stage:
             self.jobs_for_stage[stage_id] = []
@@ -47,8 +55,6 @@ class Analyzer:
         stage_id = json_data["Stage ID"]
         # Add the event to all of the jobs that depend on the stage.
         for job_id in self.jobs_for_stage[stage_id]:
-          if job_id not in self.jobs:
-            self.jobs[job_id] = Job(job_id)
           self.jobs[job_id].add_event(json_data)
 
     self.logger.debug("Filtering jobs based on passed in filter function")
