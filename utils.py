@@ -2,6 +2,7 @@
 This file contains helper functions used by many of the experiment scripts.
 """
 
+import numpy
 from optparse import OptionParser
 import os
 from os import path
@@ -83,6 +84,32 @@ def plot_continuous_monitors(log_dir):
     if log_filename.endswith("executor_monitor"):
       plot_continuous_monitor.plot_continuous_monitor(
         path.join(log_dir, log_filename), use_gnuplot=True)
+
+def find_index_of_shuffles(jobs):
+  """ Returns the ids in jobs of jobs that do a shuffle.
+
+  Arguments:
+    jobs: a list of (job_id, job) pairs.
+  """
+  shuffle_job_ids = []
+  for job_id, job in jobs:
+    for stage_id, stage in job.stages.iteritems():
+      if stage.has_shuffle_read():
+        shuffle_job_ids.append(job_id)
+        break
+  return shuffle_job_ids
+
+def get_min_med_max_string(runtimes_list):
+  """ Returns a string with the minimum, median, and max of the given runtimes.
+
+  The output divides all runtimes by 1000 (so if the input was milliseconds, the
+  value in the returned string will be in seconds). This function is useful for
+  writing data to plot.
+  """
+  return "{} {} {}".format(
+      min(runtimes_list) / 1000.,
+      numpy.percentile(runtimes_list, 50) / 1000.,
+      max(runtimes_list) / 1000.)
 
 def bytes_to_string(size):
   """Converts a quantity in bytes to a human-readable string such as "4.0 MB".
