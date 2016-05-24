@@ -64,7 +64,6 @@ def main(argv):
     num_tasks = num_tasks_values[0]
 
     ideal_runtimes_millis = []
-    ideal_runtimes_utilization_millis = []
     ideal_map_runtimes_millis = []
     actual_map_runtimes_millis = []
     ideal_reduce_runtimes_millis = []
@@ -72,28 +71,24 @@ def main(argv):
 
     for job in all_jobs:
       job_ideal_millis = 0
-      job_ideal_utilization_millis = 0
       for (stage_id, stage) in job.stages.iteritems():
-        job_ideal_millis += stage.ideal_time(cores_per_machine = num_cores, disks_per_machine = 0)
-        stage_ideal_utilization_millis = stage.ideal_time_utilization(num_cores)
-        job_ideal_utilization_millis += stage_ideal_utilization_millis
+        stage_ideal_millis = 1000 * stage.ideal_time_s(num_cores_per_executor = num_cores)
+        job_ideal_millis += stage_ideal_millis
         if stage.has_shuffle_read():
-          ideal_reduce_runtimes_millis.append(stage_ideal_utilization_millis)
+          ideal_reduce_runtimes_millis.append(stage_ideal_millis)
           actual_reduce_runtimes_millis.append(stage.runtime())
         else:
-          ideal_map_runtimes_millis.append(stage_ideal_utilization_millis)
+          ideal_map_runtimes_millis.append(stage_ideal_millis)
           actual_map_runtimes_millis.append(stage.runtime())
       ideal_runtimes_millis.append(job_ideal_millis)
-      ideal_runtimes_utilization_millis.append(job_ideal_utilization_millis)
 
-    print "Ideal times based on util:", ideal_runtimes_utilization_millis
     print "Ideal runtimes:", ideal_runtimes_millis
     print "Ideal map runtimes:", ideal_map_runtimes_millis
     print "Ideal reduce runtimes:", ideal_reduce_runtimes_millis
 
     actual_runtimes_millis = [job.runtime() for job in all_jobs]
     actual_over_ideal = [actual / ideal
-      for actual, ideal in zip(actual_runtimes_millis, ideal_runtimes_utilization_millis)]
+      for actual, ideal in zip(actual_runtimes_millis, ideal_runtimes_millis)]
 
     print "Actual runtimes:", actual_runtimes_millis
     data_to_write = [
@@ -107,9 +102,9 @@ def main(argv):
       min(actual_over_ideal),
       numpy.percentile(actual_over_ideal, 50), # 9
       max(actual_over_ideal),
-      min(ideal_runtimes_utilization_millis),
-      numpy.percentile(ideal_runtimes_utilization_millis, 50), # 12
-      max(ideal_runtimes_utilization_millis),
+      min(ideal_runtimes_millis),
+      numpy.percentile(ideal_runtimes_millis, 50), # 12
+      max(ideal_runtimes_millis),
       min(actual_map_runtimes_millis),
       numpy.percentile(actual_map_runtimes_millis, 50), # 15
       max(actual_map_runtimes_millis),

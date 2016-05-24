@@ -107,57 +107,8 @@ class Stage:
     total_output_size = sum([t.shuffle_mb_written for t in self.tasks])
     return total_output_size
 
-  def ideal_time(self, cores_per_machine, disks_per_machine):
-    """ Returns the ideal completion time, if all of the monotasks had been scheduled perfectly. """
-    num_machines = len(set([t.executor_id for t in self.tasks]))
-    total_compute_millis = sum([t.compute_monotask_millis for t in self.tasks])
-    ideal_compute_millis = float(total_compute_millis) / (num_machines * cores_per_machine)
-
-    total_disk_millis = sum([t.disk_monotask_millis for t in self.tasks])
-    ideal_disk_millis = 0
-    if total_disk_millis > 0:
-      ideal_disk_millis = float(total_disk_millis) / (num_machines * disks_per_machine)
-
-    ideal_network_millis = self.__get_ideal_network_time(num_machines)
-
-    ideal_millis = max(ideal_compute_millis, ideal_disk_millis, ideal_network_millis)
-
-    print (("Ideal times for stage: CPU: %sms, Disk: %sms, Network: %sms (so %sms for whole " +
-      "stage); actual time was %s") %
-      (ideal_compute_millis, ideal_disk_millis, ideal_network_millis, ideal_millis, self.runtime()))
-    return ideal_millis
-
   def get_network_mb(self):
     return sum([t.remote_mb_read for t in self.tasks if t.has_fetch])
-
-  def __get_ideal_network_time(self, num_machines):
-    """Returns the ideal time it would take all of the stage's network transfers to complete."""
-    # The network time is harder to compute because the parallelism varies. Just estimate
-    # it based on an ideal link bandwidth.
-    total_network_bytes = self.get_network_mb()
-    # Assume a 1gb network.
-    network_bandwith_mb_per_second = 125.
-    ideal_network_seconds = total_network_bytes / (num_machines * network_bandwith_mb_per_second)
-    ideal_network_millis = ideal_network_seconds * 1000.
-    return ideal_network_millis
-
-  def ideal_time_utilization(self, cores_per_machine):
-    """ Returns the stage's completion time if all executors had been fully utilized."""
-    executor_id_to_tasks = self.get_executor_id_to_tasks()
-    total_jiffies = 0
-    for executor_id, executor_tasks in executor_id_to_tasks.iteritems():
-      start_jiffies = min([task.start_total_cpu_jiffies for task in executor_tasks])
-      end_jiffies = max([task.end_total_cpu_jiffies for task in executor_tasks])
-      print end_jiffies - start_jiffies, "Jiffies elapsed on executor", executor_id
-      total_jiffies += end_jiffies - start_jiffies
-
-    total_millis = total_jiffies * 10
-    num_executors = len(executor_id_to_tasks)
-    ideal_cpu_millis = float(total_millis) / (num_executors * cores_per_machine)
-    ideal_network_millis = self.__get_ideal_network_time(num_executors)
-    print ("Ideal times for stage based on utilization: CPU: %sms, Network: %sms" %
-      (ideal_cpu_millis, ideal_network_millis))
-    return max(ideal_cpu_millis, ideal_network_millis)
 
   def add_event(self, data):
     task = Task(data)
@@ -169,12 +120,18 @@ class Stage:
 
     self.tasks.append(task)
 
-  def get_ideal_times_from_metrics(self):
+  def ideal_time_s(self, num_cores_per_executor):
+    ideal_times = self.get_ideal_times_from_metrics(num_cores_per_executor)
+    return max(ideal_times)
+
+  def get_ideal_times_from_metrics(self, num_cores_per_executor = 8):
     """Returns a 3-tuple containing the ideal CPU, network, and disk times (s) for this stage.
 
     The ideal times are calculated by assuming that the CPU, network, and disk tasks can be
     perfectly scheduled to take advantage of the cluster's available resources.
     """
+    # First, calculate the total resource usage based on the OS-level counters.
+    # These will be used to sanity check the job's metrics.
     total_cpu_millis = 0
     total_network_bytes_transmitted = 0
     total_network_throughput_Bps = 0
@@ -196,16 +153,19 @@ class Stage:
           total_disk_throughput_Bps += disk_metrics.effective_throughput_Bps()
 
     num_executors = len(executor_id_to_metrics)
-    num_cores_per_executor = 8
-    ideal_cpu_s = float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
 
-    # Compute how many bytes the job thinks it sent over the network. If that's
-    # 0, all of the network traffic was control messages (and not related to the job's
-    # completion time) so the ideal network time is 0.
-    if self.get_network_mb() > 0:
-      ideal_network_s = float(total_network_bytes_transmitted) / total_network_throughput_Bps
-    else:
-      ideal_network_s = 0
+    ideal_cpu_s = self.__get_ideal_cpu_s(
+      total_cpu_millis_os_counters = total_cpu_millis,
+      num_executors = num_executors,
+      num_cores_per_executor = num_cores_per_executor)
+
+    ideal_network_s = self.__get_ideal_network_s(
+      total_network_bytes_os_counters = total_network_bytes_transmitted,
+      total_network_throughput_Bps = total_network_throughput_Bps)
+
+    # TODO: Compute how many bytes the job thinks it read from / wrote to disk, and use the OS
+    # metrics as a sanity-check. This may require adding some info to the continuous monitor
+    # about whether the shuffle data was in-memory or on-disk.
     if total_disk_throughput_Bps > 0:
       ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
     else:
@@ -214,3 +174,47 @@ class Stage:
         "Outputting 0 disk seconds because throughput while writing {} bytes was 0.".format(
           total_disk_bytes_read_written))
     return (ideal_cpu_s, ideal_network_s, ideal_disk_s)
+
+  def __get_ideal_cpu_s(self, total_cpu_millis_os_counters, num_executors, num_cores_per_executor):
+    # Attempt to use the CPU monotask time to compute the ideal time. If the CPU monotask time
+    # is 0, that means this was a Spark job, in which case we have no choice but to use the OS
+    # counters.
+    total_cpu_monotask_millis = sum([t.compute_monotask_millis for t in self.tasks])
+    if total_cpu_monotask_millis > 0:
+      # The compute monotask time should be very close to the time from the OS counters.
+      self.__check_times_within_error_bound(
+        base_time = total_cpu_monotask_millis,
+        second_time = total_cpu_millis_os_counters,
+        max_relative_difference = 0.1,
+        error_message = ("Executor counters say {} CPU millis elapsed, but total CPU " +
+          "monotask time was {}").format(total_cpu_millis_os_counters, total_cpu_monotask_millis))
+      # Use the monotask time to compute the ideal time.
+      total_cpu_millis = total_cpu_monotask_millis
+    else:
+      total_cpu_millis = total_cpu_millis_os_counters
+    return float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
+
+  def __get_ideal_network_s(self, total_network_bytes_os_counters, total_network_throughput_Bps):
+    # Compute how many bytes the job thinks it sent over the network. If that's
+    # 0, all of the network traffic was control messages (and not related to the job's
+    # completion time) so the ideal network time is 0.
+    job_network_mb = self.get_network_mb()
+    if job_network_mb == 0:
+      return 0
+
+    total_network_mb_transmitted = total_network_bytes_os_counters / (1024 * 1024)
+    # Use the executor data about the total network data transmitted as a sanity check: this
+    # should be close to how much data the job thinks it transferred over the network.
+    self.__check_times_within_error_bound(
+      base_time = job_network_mb,
+      second_time = total_network_mb_transmitted,
+      max_relative_difference = 0.1,
+      error_message = (("Executor counters say {} bytes transmitted, but job thinks {} " +
+        "was transmitted").format(total_network_mb_transmitted, job_network_mb)))
+    return float(job_network_mb) / total_network_throughput_Bps
+
+  def __check_times_within_error_bound(self, base_time, second_time, max_relative_difference,
+                                       error_message):
+    if float(abs(second_time - base_time)) / base_time > max_relative_difference:
+      raise Exception(error_message)
+
