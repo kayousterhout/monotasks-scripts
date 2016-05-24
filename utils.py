@@ -22,6 +22,34 @@ def ssh_get_stdout(host, identity_file, username, command):
     identity_file, username, host, command)
   return subprocess.Popen(ssh_command, stdout=subprocess.PIPE, shell=True).communicate()[0]
 
+def copy_latest_zipped_logs(driver_hostname, identity_file, output_prefix, num_experiments,
+                            username):
+  list_filenames_command = "ls -t /mnt/experiment_log_*gz | head -n " + num_experiments
+  event_log_filenames = ssh_get_stdout(
+    driver_hostname,
+    identity_file,
+    username,
+    list_filenames_command).strip("\n").strip("\r")
+  print "Copying data from directories: " + event_log_filenames
+
+  for event_log_filename in event_log_filenames.split("\n"):
+    event_log_filename = event_log_filename.strip("\r")
+    basename = os.path.basename(event_log_filename)
+    local_zipped_logs_name = os.path.join(output_prefix, basename)
+    print ("Copying event log from file %s back to %s" %
+      (event_log_filename, local_zipped_logs_name))
+    scp_from(
+      driver_hostname,
+      identity_file,
+      username,
+      event_log_filename,
+      local_zipped_logs_name)
+
+    # Unzip the file.
+    subprocess.check_call(
+      "tar -xvzf %s -C %s" % (local_zipped_logs_name, output_prefix),
+      shell=True)
+
 def copy_latest_continuous_monitor(hostname, identity_file, filename_prefix, username):
   """ Copies logs back from a Spark cluster.
 

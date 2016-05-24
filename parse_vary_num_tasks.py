@@ -21,33 +21,6 @@ def filter(all_jobs_dict):
   filtered_jobs = sorted_jobs[3::2]
   return {k:v for (k,v) in filtered_jobs}
 
-def copy_data(driver_hostname, identity_file, output_prefix, num_experiments, username):
-  list_filenames_command = "ls -t /mnt/experiment_log_*gz | head -n " + num_experiments
-  event_log_filenames = utils.ssh_get_stdout(
-    driver_hostname,
-    identity_file,
-    username,
-    list_filenames_command).strip("\n").strip("\r")
-  print event_log_filenames
-
-  for event_log_filename in event_log_filenames.split("\n"):
-    event_log_filename = event_log_filename.strip("\r")
-    basename = os.path.basename(event_log_filename)
-    local_zipped_logs_name = os.path.join(output_prefix, basename)
-    print ("Copying event log from file %s back to %s" %
-      (event_log_filename, local_zipped_logs_name))
-    utils.scp_from(
-      driver_hostname,
-      identity_file,
-      username,
-      event_log_filename,
-      local_zipped_logs_name)
-
-    # Unzip the file.
-    subprocess.check_call(
-      "tar -xvzf %s -C %s" % (local_zipped_logs_name, output_prefix),
-      shell=True)
-
 def main(argv):
   if len(argv) < 2:
     print ("Usage: parse_vary_num_tasks.py output_directory [opt (to copy data): driver_hostname " +
@@ -71,7 +44,7 @@ def main(argv):
       username = argv[5]
     else:
       username = "root"
-    copy_data(driver_hostname, identity_file, output_prefix, num_experiments, username)
+    utils.copy_latest_zipped_logs(driver_hostname, identity_file, output_prefix, num_experiments, username)
 
   all_dirnames = [d for d in os.listdir(output_prefix) if "experiment" in d and "tar.gz" not in d]
   all_dirnames.sort(key = lambda d: int(re.search('experiment_log_([0-9]*)_', d).group(1)))
