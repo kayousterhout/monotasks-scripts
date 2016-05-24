@@ -43,7 +43,6 @@ class Analyzer:
         # what the Spark UI does).
         max_stage_id = max([int(id) for id in stage_ids])
         for stage_info in json_data["Stage Infos"]:
-          print max_stage_id, stage_info["Stage ID"]
           if int(stage_info["Stage ID"]) == max_stage_id:
             # Use the name of the stage to set the name of the job.
             self.jobs[job_id] = Job(job_id, stage_info["Stage Name"])
