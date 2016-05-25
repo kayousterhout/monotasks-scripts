@@ -1,5 +1,5 @@
 """
-This file copies bacsk the most recent 5 job log bundles from the given
+This file copies back the most recent 5 job log bundles from the given
 master and generates a graph plotting the job completion time as a function
 of the number of tasks used.
 """
