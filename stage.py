@@ -216,5 +216,5 @@ class Stage:
   def __check_times_within_error_bound(self, base_time, second_time, max_relative_difference,
                                        error_message):
     if float(abs(second_time - base_time)) / base_time > max_relative_difference:
-      raise Exception(error_message)
+      logging.warning(error_message)
 
