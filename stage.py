@@ -170,7 +170,7 @@ class Stage:
       ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
     else:
       ideal_disk_s = 0
-      logging.getLogger("Stage").warning(
+      logging.warning(
         "Outputting 0 disk seconds because throughput while writing {} bytes was 0.".format(
           total_disk_bytes_read_written))
     return (ideal_cpu_s, ideal_network_s, ideal_disk_s)
