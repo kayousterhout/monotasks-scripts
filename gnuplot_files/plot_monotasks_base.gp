@@ -30,8 +30,10 @@ set y2label "Kilobytes "
 set xlabel "Time"
 
 plot "__NAME__" using 1:6 with l ls 1 title "Macrotasks",\
+"__NAME___started_macrotasks" using 1:2 with l ls 7 notitle,\
 "__NAME__" using 1:15 with l ls 1 lc rgb "#feb24c" title "Local Macrotasks",\
 "__NAME__" using 1:9 with l ls 2 title "Macrotasks in network",\
+"__NAME__" using 1:16 with l ls 4 title "Low-Priority Network Monotasks",\
 "__NAME__" using 1:10 with l ls 3 title "Macrotasks in compute",\
 "__NAME__" using 1:12 with l ls 7 title "Macrotasks in disk",\
 "__NAME__" using 1:5 with l ls 5 title "Compute Monotasks",\

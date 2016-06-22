@@ -44,6 +44,7 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
   # Mapping of disk IDs to the 1-indexed index in utilization file where the information
   # about that disk begins.
   disks_to_index = {}
+  time_and_total_started_macrotasks = []
   for (i, line) in enumerate(open(filename, "r")):
     try:
       json_data = json.loads(line)
@@ -108,6 +109,9 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
     macrotasks_in_network = 0
     if "Macrotasks In Network" in json_data:
       macrotasks_in_network = json_data["Macrotasks In Network"]
+    low_priority_network_monotasks = 0
+    if "Running Low Priority Network Monotasks" in json_data:
+      low_priority_network_monotasks = json_data["Running Low Priority Network Monotasks"]
     macrotasks_in_compute = 0
     if "Macrotasks In Compute" in json_data:
       macrotasks_in_compute = json_data["Macrotasks In Compute"]
@@ -120,6 +124,9 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
     free_off_heap_memory = 0
     if "Free Off-Heap Memory Bytes" in json_data:
       free_off_heap_memory = json_data["Free Off-Heap Memory Bytes"]
+    if "Total Started Macrotasks" in json_data:
+      total_started_macrotasks = json_data["Total Started Macrotasks"]
+      time_and_total_started_macrotasks.append((time - start, total_started_macrotasks))
 
     data = [
       ('time', time - start),
@@ -136,7 +143,9 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
       ('macrotasks in disk', macrotasks_in_disk),
       ('free heap memory', free_heap_memory / BYTES_PER_GIGABYTE),
       ('free off heap memory', free_off_heap_memory / BYTES_PER_GIGABYTE),
-      ('local running macrotasks', local_running_macrotasks) # 15
+      ('local running macrotasks', local_running_macrotasks), # 15
+      ('running low priority monotasks', low_priority_network_monotasks),
+      ('total started macrotasks', total_started_macrotasks)
     ]
 
     # Append info about each disk (in sorted order, so that the standard EC2 disks appear in
@@ -157,10 +166,25 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
     continuous_monitor_data.append(data)
 
   if use_gnuplot:
+    output_time_and_started_macrotasks(filename, time_and_total_started_macrotasks)
     plot_gnuplot.plot(continuous_monitor_data, filename, open_graphs, disks_to_index)
   else:
     plot_matplotlib.plot([dict(line) for line in continuous_monitor_data], filename, open_graphs,
                          disks_to_index.iterkeys())
+
+
+def output_time_and_started_macrotasks(filename_prefix, time_and_total_started_macrotasks):
+  """ Genenerates data to make a plot with a vertical line for each started task."""
+  previous_started_macrotasks = 0
+  # For doing the string substitution in the gnuplot file, it's useful that this has
+  # utilization as a prefix.
+  filename = '{}_utilization_started_macrotasks'.format(filename_prefix)
+  with open(filename, 'w') as f:
+    for (time, count) in time_and_total_started_macrotasks:
+      delta = count - previous_started_macrotasks
+      if delta > 0:
+        f.write('{time} 0\n{time} {delta}\n{time} 0\n'.format(time = time, delta = delta))
+        previous_started_macrotasks = count
 
 
 def get_util_for_disk(disk_utils, disk):

@@ -4,6 +4,7 @@ master and generates a graph plotting the job completion time as a function
 of the number of tasks used.
 """
 
+import logging
 import numpy
 import os
 import re
