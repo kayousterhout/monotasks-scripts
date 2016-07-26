@@ -55,9 +55,14 @@ def main(argv):
   all_dirnames.sort()
 
   for dirname in all_dirnames:
+    utils.plot_continuous_monitors(os.path.join(output_prefix, dirname))
+
     local_event_log_filename = os.path.join(output_prefix, dirname, "event_log")
     print "Parsing event log in %s" % local_event_log_filename
     analyzer = parse_event_logs.Analyzer(local_event_log_filename, job_filterer = filter)
+    analyzer.output_job_resource_metrics(local_event_log_filename)
+    analyzer.output_stage_resource_metrics(local_event_log_filename)
+    analyzer.output_ideal_time_metrics(local_event_log_filename)
 
     total_runtimes = []
     total_ideal_runtimes = []
