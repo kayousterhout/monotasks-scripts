@@ -47,7 +47,7 @@ def plot_gnuplot_attribute(attribute, file_prefix, open_graphs, scripts_dir, dis
         color += 1
 
   subprocess.check_call('gnuplot {}'.format(plot_filename), shell=True)
-  if open_graphs:
+  if open_graphs and attribute != 'memory':
     subprocess.check_call('open {}'.format(pdf_filename), shell=True)
 
 
