@@ -51,6 +51,14 @@ def copy_latest_zipped_logs(driver_hostname, identity_file, output_prefix, num_e
       "tar -xvzf %s -C %s" % (local_zipped_logs_name, output_prefix),
       shell=True)
 
+  # If necessary, move the file out of the /mnt directory.
+  mnt_directory = path.join(output_prefix, "mnt")
+  if path.exists(mnt_directory):
+    command = "mv {}/* {}/".format(mnt_directory, output_prefix)
+    print command
+    subprocess.check_call(command, shell=True)
+    subprocess.check_call("rmdir {}".format(mnt_directory), shell=True)
+
 def copy_latest_continuous_monitor(hostname, identity_file, filename_prefix, username):
   """ Copies logs back from a Spark cluster.
 
