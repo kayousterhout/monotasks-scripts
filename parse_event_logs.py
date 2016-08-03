@@ -118,6 +118,33 @@ class Analyzer:
     runtimes = [job.runtime() for (job_id, job) in self.jobs.iteritems()]
     self.write_summary_file(runtimes, "%s_runtimes" % prefix)
 
+  def output_compute_monotask_time_cdfs(self, prefix):
+    """ For each stage, outputs a CDF of the runtime of the compute monotasks. """
+    # Write a gnuplot file to display all of the cdfs.
+    output_prefix = "{}_compute_monotask_cdf".format(prefix)
+    gnuplot_file = open("{}.gp".format(output_prefix), "w")
+
+    # Copy over the plotting template.
+    with open("gnuplot_files/plot_cdf_base.gp", "r") as gnuplot_base_file:
+      for line in gnuplot_base_file:
+        gnuplot_file.write(line)
+
+    gnuplot_file.write("set output \"{}.pdf\"\nplot ".format(output_prefix))
+
+    is_first = True
+    for job_id, job in self.jobs.iteritems():
+      for stage_id, stage in job.stages.iteritems():
+        compute_monotask_times = [t.compute_monotask_millis for t in stage.tasks]
+        output_filename = "{}_{}_{}".format(output_prefix, job_id, stage_id)
+        with open(output_filename, "w") as runtimes_file:
+          for index, time in enumerate(sorted(compute_monotask_times)):
+            runtimes_file.write("{}\t{}\n".format(index, time))
+        if not is_first:
+          gnuplot_file.write(", ")
+        is_first = False
+        gnuplot_file.write("\"{}\" using 2:1 with l title \"Job {}, Stage {}\"".format(
+          output_filename, job_id, stage_id))
+
   def output_utilizations(self, prefix):
     # TODO: This function outputs the distribution of utilizations while tasks were running by
     # calculating a weighted average of the utilizations while tasks were running, using the
