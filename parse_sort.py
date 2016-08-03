@@ -52,8 +52,11 @@ def main(argv):
   # Find all of the directories with experiment data.
   all_dirnames = [d for d in os.listdir(output_prefix)
     if os.path.isdir(os.path.join(output_prefix, d))]
-  all_dirnames.sort()
+  all_dirnames.sort(key = lambda d: -int(d.split("_")[4]))
 
+  map_data_file = open(os.path.join(output_prefix, "map_times"), "w")
+  reduce_data_file = open(os.path.join(output_prefix, "reduce_times"), "w")
+  total_data_file = open(os.path.join(output_prefix, "total_times"), "w")
   for dirname in all_dirnames:
     utils.plot_continuous_monitors(os.path.join(output_prefix, dirname))
 
@@ -73,19 +76,21 @@ def main(argv):
 
     reduce_runtimes = []
     reduce_ideal_runtimes = []
+    reduce_cpu_ideal_times = []
 
     for (job_id, job) in analyzer.jobs.iteritems():
       job_millis = 0
       job_ideal_millis = 0
       for (stage_id, stage) in job.stages.iteritems():
-        stage_ideal_millis = (
-            1000 * stage.ideal_time_s(num_cores_per_executor = num_cores))
+        stage_ideal_times = stage.get_ideal_times_from_metrics(num_cores_per_executor = num_cores)
+        stage_ideal_millis = 1000 * max(stage_ideal_times)
         stage_runtime = stage.runtime()
         job_millis += stage_runtime
         job_ideal_millis += stage_ideal_millis
         if stage.has_shuffle_read():
           reduce_runtimes.append(stage_runtime)
           reduce_ideal_runtimes.append(stage_ideal_millis)
+          reduce_cpu_ideal_times.append(1000 * stage_ideal_times[0])
         else:
           map_runtimes.append(stage_runtime)
           map_ideal_runtimes.append(stage_ideal_millis)
@@ -95,15 +100,27 @@ def main(argv):
     output_filename = local_event_log_filename + "_job_runtimes"
     with open(output_filename, "w") as output_file:
       output_file.write("Name Actual (min, med, max) Ideal (min, med, max)\n")
-      output_file.write("Map {} {}\n".format(
+      map_data = "{} {}".format(
           utils.get_min_med_max_string(map_runtimes),
-          utils.get_min_med_max_string(map_ideal_runtimes)))
-      output_file.write("Reduce {} {}\n".format(
+          utils.get_min_med_max_string(map_ideal_runtimes))
+      reduce_data = "{} {}".format(
           utils.get_min_med_max_string(reduce_runtimes),
-          utils.get_min_med_max_string(reduce_ideal_runtimes)))
-      output_file.write("Total {} {}\n".format(
+          utils.get_min_med_max_string(reduce_ideal_runtimes))
+      total_data = "{} {}".format(
           utils.get_min_med_max_string(total_runtimes),
-          utils.get_min_med_max_string(total_ideal_runtimes)))
+          utils.get_min_med_max_string(total_ideal_runtimes))
+
+      output_file.write("Map {}\n".format(map_data))
+      output_file.write("Reduce {}\n".format(reduce_data))
+      output_file.write("Total {}\n".format(total_data))
+
+      num_shuffle_values = int(dirname.split("_")[5])
+      map_data_file.write("{} {}\n".format(num_shuffle_values, map_data))
+      reduce_data_file.write("{} {} {}\n".format(
+        num_shuffle_values,
+        reduce_data,
+        utils.get_min_med_max_string(reduce_cpu_ideal_times)))
+      total_data_file.write("{} {}\n".format(num_shuffle_values, total_data))
 
 if __name__ == "__main__":
   main(sys.argv)
