@@ -124,6 +124,7 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
     free_off_heap_memory = 0
     if "Free Off-Heap Memory Bytes" in json_data:
       free_off_heap_memory = json_data["Free Off-Heap Memory Bytes"]
+    total_started_macrotasks = 0
     if "Total Started Macrotasks" in json_data:
       total_started_macrotasks = json_data["Total Started Macrotasks"]
       time_and_total_started_macrotasks.append((time - start, total_started_macrotasks))
