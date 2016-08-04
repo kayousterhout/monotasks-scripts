@@ -26,7 +26,7 @@ set y2range [0:]
 set key above
 
 set ylabel "# Running" offset 1
-set y2label "Kilobytes "
+set y2label "Megabytes "
 set xlabel "Time"
 
 plot "__NAME__" using 1:6 with l ls 1 title "Macrotasks",\
