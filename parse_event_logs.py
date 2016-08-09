@@ -257,6 +257,9 @@ class Analyzer:
           ideal_cpu_millis, ideal_network_millis, ideal_disk_millis = (
             stage.get_ideal_times_from_metrics())
           job_runtime_s += max(ideal_cpu_millis, ideal_network_millis, ideal_disk_millis)
+          # TODO: Right now this will be different than the number that was used to calculate
+          # the ideal network time (because the ideal network time is calculated using the 
+          # info from the OS counters, which is more accurate than the job-level info).
           network_mbits = stage.get_network_mb()
 
           output.write(

@@ -211,7 +211,12 @@ class Stage:
       max_relative_difference = 0.1,
       error_message = (("Executor counters say {} bytes transmitted, but job thinks {} " +
         "was transmitted").format(total_network_mb_transmitted, job_network_mb)))
-    return float(job_network_mb) * 1024 * 1024 / total_network_throughput_Bps
+     # Ultimately return what the network thinks it transmitted. This is required for the
+     # calculation to work properly with the pipelined shuffle, where during the reduce
+     # stage, there's a bunch of data transmitted that's not associated with a particular
+     # task. It also works better in general, because typically there's some overhead, where
+     # the actual data transmitted is somewhat higher than what the job thought.
+    return total_network_bytes_os_counters / total_network_throughput_Bps
 
   def __check_times_within_error_bound(self, base_time, second_time, max_relative_difference,
                                        error_message):
