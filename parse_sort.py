@@ -39,7 +39,8 @@ def main(argv):
     driver_hostname = argv[2]
     if "millennium" in driver_hostname:
       # The millennium machines have 16 cores.
-      num_cores = 16
+      # TODO: Temporarily, only running 8, to understand CPU effects of opportunistic networking.
+      num_cores = 8
     identity_file = argv[3]
     num_experiments = argv[4]
     if len(argv) >= 6:
