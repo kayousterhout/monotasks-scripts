@@ -63,6 +63,13 @@ class CpuMetrics(object):
 
 
 class NetworkMetrics(object):
+  """ Describes the network utilization on a particular executor during a period of time.
+
+  Currently, self.transmit_idle_millis is not accurate and often overestimates the time the
+  network spent idle (because the Java-level network scheduler was idle, but during that period,
+  it had passed data to the OS networking stack's buffers, so the network was still in use).
+  As a result, transmit_idle_millis should not be used.
+  """
 
   def __init__(self, elapsed_millis, transmit_idle_millis, bytes_transmitted):
     self.elapsed_millis = elapsed_millis
