@@ -1,5 +1,8 @@
 import sys
 
+# Add this if the milliseconds are included in the log output.
+offset = 0
+
 input_filename = sys.argv[1]
 LINE_TEMPLATE = ("set arrow from {start_x},{y} to {end_x},{y} ls {style} nohead\n" +
   "set label \"{runtime} ({macrotask_id})\" at {end_x},{y} left font 'Times,5'\n")
@@ -20,7 +23,7 @@ def get_first_start(data_filename):
   with open(data_filename, "r") as data_file:
     line = data_file.readline()
     items = line.split(" ")
-    return int(items[19][:-3])
+    return int(items[offset + 19][:-3])
 
 def write_monotask_times(data_filename, plot_file, first_start):
   max_y = 0
@@ -34,35 +37,41 @@ def write_monotask_times(data_filename, plot_file, first_start):
     stage_data = []
     for line in data_file:
       items = line.split(" ")
-      start_millis = int(items[19][:-3])
+      start_millis = int(items[offset + 19][:-3])
 
-      runtime_millis = int(items[15])
-      stage = int(items[12].strip(")").strip("}"))
-      macrotask_id = int(items[9])
+      runtime_millis = int(items[offset + 15])
+      macrotask_id = int(items[offset + 9])
 
       if line.find("network") != -1 and line.find("NetworkResponse") == -1:
         line_style = 1
         finish_time = start_millis + runtime_millis
-        start_millis = max(start_millis, last_network_monotask_end)
+        # This is the old code -- but with the zero runtime monotasks (the ones that got
+        # short-circuited) it doesn't work correctly.
+        #start_millis = max(start_millis, last_network_monotask_end)
         runtime_millis = finish_time - start_millis
         last_network_monotask_end = finish_time
+        # Use the reduce ID as the macrotask ID, so it's easier to correlate them.
+        macrotask_id = int(items[offset + 12].strip("}").strip(")"))
       elif line.find("compute") != -1:
         line_style = 2
+
+        # Only roll over the stage for compute monotasks, because of complexities with the
+        # pipelined network ones.
+        stage = int(items[offset + 12].strip(")").strip("}"))
+        if current_stage != stage:
+          write_stage_data(stage_data, plot_file)
+          max_y = max(max_y, len(stage_data))
+          stage_data = []
+          first_task_id = macrotask_id
+          current_stage = stage
+
       else:
         continue
-
-      if current_stage != stage:
-        write_stage_data(stage_data, plot_file)
-        max_y = max(max_y, len(stage_data))
-        stage_data = []
-        first_task_id = macrotask_id
-        current_stage = stage
-
       stage_data.append([
         line_style,
         start_millis - first_start,
         runtime_millis,
-        macrotask_id - first_task_id])
+        macrotask_id])
       last_end = max(last_end, start_millis + runtime_millis - first_start)
 
     # Don't forget to plot the last stage!
