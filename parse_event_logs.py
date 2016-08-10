@@ -10,6 +10,7 @@ from optparse import OptionParser
 import shuffle_job_filterer
 import sys
 
+import metrics
 from job import Job
 
 def get_json(line):
@@ -255,7 +256,9 @@ class Analyzer:
         job_runtime_s = 0
         for stage_id, stage in job.stages.iteritems():
           ideal_cpu_millis, ideal_network_millis, ideal_disk_millis = (
-            stage.get_ideal_times_from_metrics())
+            stage.get_ideal_times_from_metrics(
+              metrics.AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S,
+              num_cores_per_executor = 8))
           job_runtime_s += max(ideal_cpu_millis, ideal_network_millis, ideal_disk_millis)
           # TODO: Right now this will be different than the number that was used to calculate
           # the ideal network time (because the ideal network time is calculated using the 

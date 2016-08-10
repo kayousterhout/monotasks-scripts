@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 
+import metrics
 import parse_event_logs
 import utils
 
@@ -73,7 +74,9 @@ def main(argv):
     for job in all_jobs:
       job_ideal_millis = 0
       for (stage_id, stage) in job.stages.iteritems():
-        stage_ideal_millis = 1000 * stage.ideal_time_s(num_cores_per_executor = num_cores)
+        stage_ideal_millis = 1000 * stage.ideal_time_s(
+          metrics.AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S,
+          num_cores_per_executor = num_cores)
         job_ideal_millis += stage_ideal_millis
         if stage.has_shuffle_read():
           ideal_reduce_runtimes_millis.append(stage_ideal_millis)

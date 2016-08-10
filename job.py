@@ -80,8 +80,9 @@ class Job:
     f.write("%s\t%s\t%s\n" % (query_id, last_stage_runtime, self.original_runtime()))
     f.close()
 
-  def ideal_time_s(self, num_cores_per_executor):
+  def ideal_time_s(self, network_throughput_gigabits_per_executor, num_cores_per_executor):
     total_time = 0
     for stage in self.stages.itervalues():
-      total_time += stage.ideal_time_s(num_cores_per_executor)
+      total_time += stage.ideal_time_s(
+        network_throughput_gigabits_per_executor, num_cores_per_executor)
     return total_time

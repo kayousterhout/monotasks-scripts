@@ -25,6 +25,12 @@ SECTORS_WRITTEN_KEY = "Sectors Written"
 MILLIS_WRITING_KEY = "Millis Writing"
 TOTAL_IO_MILLIS_KEY = "Millis Total"
 
+# This is based on looking at one of the continuous monitors from
+# a network-bound experiment running on the millennium cluster.
+MILLENNIUM_MAX_NETWORK_GIGABITS_PER_S = 0.917
+
+AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S = 0.7
+
 
 class CpuMetrics(object):
 

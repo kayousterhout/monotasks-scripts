@@ -7,6 +7,7 @@ results.
 import os
 import sys
 
+import metrics
 import parse_event_logs
 import utils
 
@@ -83,7 +84,9 @@ def main(argv):
       job_millis = 0
       job_ideal_millis = 0
       for (stage_id, stage) in job.stages.iteritems():
-        stage_ideal_times = stage.get_ideal_times_from_metrics(num_cores_per_executor = num_cores)
+        stage_ideal_times = stage.get_ideal_times_from_metrics(
+          metrics.AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S,
+          num_cores_per_executor = num_cores)
         stage_ideal_millis = 1000 * max(stage_ideal_times)
         stage_runtime = stage.runtime()
         job_millis += stage_runtime

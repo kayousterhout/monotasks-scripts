@@ -120,11 +120,16 @@ class Stage:
 
     self.tasks.append(task)
 
-  def ideal_time_s(self, num_cores_per_executor):
-    ideal_times = self.get_ideal_times_from_metrics(num_cores_per_executor)
+  def ideal_time_s(self, network_throughput_gigabits_per_executor, num_cores_per_executor):
+    ideal_times = self.get_ideal_times_from_metrics(
+      network_throughput_gigabits_per_executor,
+      num_cores_per_executor)
     return max(ideal_times)
 
-  def get_ideal_times_from_metrics(self, num_cores_per_executor = 8):
+  def get_ideal_times_from_metrics(
+      self,
+      network_throughput_gigabits_per_executor,
+      num_cores_per_executor = 8):
     """Returns a 3-tuple containing the ideal CPU, network, and disk times (s) for this stage.
 
     The ideal times are calculated by assuming that the CPU, network, and disk tasks can be
@@ -134,7 +139,6 @@ class Stage:
     # These will be used to sanity check the job's metrics.
     total_cpu_millis = 0
     total_network_bytes_transmitted = 0
-    total_network_throughput_Bps = 0
     total_disk_bytes_read_written = 0
     total_disk_throughput_Bps = 0
 
@@ -142,9 +146,7 @@ class Stage:
     for executor_metrics in executor_id_to_metrics.itervalues():
       total_cpu_millis += executor_metrics.cpu_metrics.cpu_millis
 
-      network_metrics = executor_metrics.network_metrics
-      total_network_bytes_transmitted += network_metrics.bytes_transmitted
-      total_network_throughput_Bps += network_metrics.effective_transmit_throughput_Bps
+      total_network_bytes_transmitted += executor_metrics.network_metrics.bytes_transmitted
 
       for disk_name, disk_metrics in executor_metrics.disk_name_to_metrics.iteritems():
         # We only consider disks that are used as Spark or HDFS data directories.
@@ -159,6 +161,8 @@ class Stage:
       num_executors = num_executors,
       num_cores_per_executor = num_cores_per_executor)
 
+    total_network_throughput_Bps = ((1024 * 1024 * 1024 / 8) *
+      len(executor_id_to_metrics) * network_throughput_gigabits_per_executor)
     ideal_network_s = self.__get_ideal_network_s(
       total_network_bytes_os_counters = total_network_bytes_transmitted,
       total_network_throughput_Bps = total_network_throughput_Bps)
