@@ -118,13 +118,16 @@ def main(argv):
       output_file.write("Reduce {}\n".format(reduce_data))
       output_file.write("Total {}\n".format(total_data))
 
-      num_shuffle_values = int(dirname.split("_")[5])
-      map_data_file.write("{} {}\n".format(num_shuffle_values, map_data))
-      reduce_data_file.write("{} {} {}\n".format(
+      job_params = dirname.split("_")
+      num_shuffle_values = int(job_params[5])
+      num_tasks = int(job_params[2])
+      map_data_file.write("{} {} {}\n".format(num_shuffle_values, num_tasks, map_data))
+      reduce_data_file.write("{} {} {} {}\n".format(
         num_shuffle_values,
+        num_tasks,
         reduce_data,
         utils.get_min_med_max_string(reduce_cpu_ideal_times)))
-      total_data_file.write("{} {}\n".format(num_shuffle_values, total_data))
+      total_data_file.write("{} {} {}\n".format(num_shuffle_values, num_tasks, total_data))
 
 if __name__ == "__main__":
   main(sys.argv)
