@@ -11,6 +11,20 @@ import sys
 
 import plot_continuous_monitor
 
+def create_gnuplot_file_from_base(base_filename, new_filename, keyword_to_value):
+  """ Creates a new gnuplot file based on the given base file.
+
+  For each entry in the keyword_to_value dictionary, replaces incidences of the key
+  in the base gnuplot file with the value in keyword_to_value.
+  """
+  new_file = open(new_filename, "w")
+  with open(base_filename, "r") as base_file:
+    for line in base_file:
+      for key, value in keyword_to_value.iteritems():
+        line = line.replace(key, value)
+      new_file.write(line)
+  return new_file
+
 # Copy a file from a given host through scp, throwing an exception if scp fails.
 def scp_from(host, identity_file, username, remote_file, local_file):
   subprocess.check_call("scp -q -o StrictHostKeyChecking=no -i {} '{}@{}:{}' '{}'".format(

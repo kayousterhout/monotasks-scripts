@@ -179,6 +179,56 @@ class Stage:
           total_disk_bytes_read_written))
     return (ideal_cpu_s, ideal_network_s, ideal_disk_s)
 
+  def get_ideal_times_from_metrics_fix_executors(
+      self,
+      network_throughput_gigabits_per_executor:
+      num_cores_per_executor = 8):
+    """Returns a 3-tuple containing the ideal CPU, network, and disk time(s) for this stage.
+
+    Unlike the above method, this method assumes that the assignment of tasks to worker machines
+    is fixed (so, for example, the ideal CPU time is the maximum CPU time on any one executor,
+    rather than the total CPU time across all executors divided by the number of executors).
+
+    This method uses the monotask times to determine the ideal compute time, but uses the
+    executor metrics to compute the ideal network and disk times.  This is because we don't
+    currently have enough disk information to determine the ideal disk time, because each
+    monotask just has the total disk time, but doesn't break that into local versus remote
+    time, or into how much time was spent on each local disk.
+    """
+    max_executor_cpu_millis = 0
+    max_network_seconds = 0
+    max_disk_seconds = 0
+
+    executor_id_to_metrics = self.get_executor_id_to_resource_metrics()
+    network_throughput_Bps = network_throughput_gigabits_per_executor * 1024 * 1024 * 1024 / 8.0
+    for executor_id, executor_metrics in executor_id_to_metrics.iteritems():
+      tasks_for_executor = [t for t in self.tasks if t.executor_id == executor_id]
+
+      # Always use the monotask time (not the underlying OS counters) to compute the ideal time,
+      # for consistency with the model described in the paper.
+      executor_cpu_millis = (sum([t.compute_monotask_millis for t in tasks_for_executor]) /
+        num_cores_per_executor)
+      max_executor_cpu_millis = max(max_executor_cpu_millis, executor_cpu_millis)
+
+      # Use the bytes transmitted to calculate the network time. Could alternately use the
+      # bytes received (this won't include any packets that were dropped).
+      executor_network_seconds = (
+        float(executor_metrics.network_metrics.bytes_transmitted) / network_throughput_Bps)
+      max_network_seconds = max(max_network_seconds, executor_network_seconds)
+
+      # For the disks, also assume there's no flexibility in which disk data gets written to.
+      # TODO: Should be calculating the disk time based on the disk monotasks, not based on the OS
+      # counters.
+      for disk_name, disk_metrics in executor_metrics.disk_name_to_metrics.iteritems():
+        if disk_name in ["xvdb", "xvdc", "xvdf"]:
+          disk_bytes_read_written = disk_metrics.bytes_read + disk_metrics.bytes_written
+          disk_throughput = disk_metrics.effective_throughput_Bps()
+          if disk_bytes_read_written > 0 and disk_throughput > 0:
+            disk_seconds = disk_bytes_read_written / disk_throughput
+            max_disk_seconds = max(max_disk_seconds, disk_seconds)
+
+      return (max_executor_cpu_millis / 1000., max_network_seconds, max_disk_seconds)
+
   def __get_ideal_cpu_s(self, total_cpu_millis_os_counters, num_executors, num_cores_per_executor):
     # Attempt to use the CPU monotask time to compute the ideal time. If the CPU monotask time
     # is 0, that means this was a Spark job, in which case we have no choice but to use the OS
@@ -224,6 +274,8 @@ class Stage:
 
   def __check_times_within_error_bound(self, base_time, second_time, max_relative_difference,
                                        error_message):
+
     if float(abs(second_time - base_time)) / base_time > max_relative_difference:
-      logging.warning(error_message)
+      if base_time > 0 and second_time > 0:
+        logging.warning(error_message)
 
