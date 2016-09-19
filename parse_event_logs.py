@@ -255,11 +255,13 @@ class Analyzer:
       for job_id, job in self.jobs.iteritems():
         job_runtime_s = 0
         for stage_id, stage in job.stages.iteritems():
-          ideal_cpu_millis, ideal_network_millis, ideal_disk_millis = (
+          ideal_cpu_s, ideal_network_s, ideal_disk_s = (
             stage.get_ideal_times_from_metrics(
               metrics.AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S,
               num_cores_per_executor = 8))
-          job_runtime_s += max(ideal_cpu_millis, ideal_network_millis, ideal_disk_millis)
+          ideal_ser_deser_time_s = stage.get_ideal_ser_deser_time_s()
+
+          job_runtime_s += max(ideal_cpu_s, ideal_network_s, ideal_disk_s)
           # TODO: Right now this will be different than the number that was used to calculate
           # the ideal network time (because the ideal network time is calculated using the 
           # info from the OS counters, which is more accurate than the job-level info).
@@ -267,9 +269,10 @@ class Analyzer:
 
           output.write(
             "Job {}, Stage {}:\n".format(job_id, stage_id) +
-            "\tcpu: {:.2f} s\n".format(ideal_cpu_millis) +
-            "\tnetwork: {:.2f} s ({} mb)\n".format(ideal_network_millis, network_mbits) +
-            "\tdisk: {:.2f} s\n".format(ideal_disk_millis) +
+            "\tcpu: {:.2f} s\n".format(ideal_cpu_s) +
+            "\tcpu (only ser / deser): {:.2f} s\n".format(ideal_ser_deser_time_s) +
+            "\tnetwork: {:.2f} s ({} mb)\n".format(ideal_network_s, network_mbits) +
+            "\tdisk: {:.2f} s\n".format(ideal_disk_s) +
             "\tactual: {:.2f} s\n".format(stage.runtime() / 1000.)
           )
         output.write("Job {} ideal runtime: {:.2f} s\n".format(job_id, job_runtime_s))

@@ -126,6 +126,13 @@ class Stage:
       num_cores_per_executor)
     return max(ideal_times)
 
+  def get_ideal_ser_deser_time_s(self, num_cores_per_executor = 8):
+    num_executors = len(self.get_executor_id_to_tasks())
+    total_ser_time_millis = sum([t.hdfs_ser_comp_millis for t in self.tasks])
+    total_deser_time_millis = sum([t.hdfs_deser_decomp_millis for t in self.tasks])
+    return (float(total_ser_time_millis + total_deser_time_millis) /
+      (num_executors * num_cores_per_executor * 1000))
+
   def get_ideal_times_from_metrics(
       self,
       network_throughput_gigabits_per_executor,
