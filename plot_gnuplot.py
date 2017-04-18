@@ -73,6 +73,12 @@ def plot_single_disk(disk_to_plot, start_index, file_prefix, open_graphs, script
       util_filename, start_index + 2, 4, "Write Throughput"))
     disk_plot_file.write(",\\\n")
     disk_plot_file.write(LINE_TEMPLATE.format(util_filename, start_index + 3, 5, "Monotasks"))
+    disk_plot_file.write(",\\\n")
+    disk_plot_file.write(LINE_TEMPLATE.format(
+      util_filename, start_index + 4, 7, "Queued Read Monotasks"))
+    disk_plot_file.write(",\\\n")
+    disk_plot_file.write(
+      LINE_TEMPLATE.format(util_filename, start_index + 6, 8, "Queued Write Monotasks"))
 
   subprocess.check_call('gnuplot {}'.format(disk_plot_filename), shell=True)
   if open_graphs:

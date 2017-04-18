@@ -18,6 +18,9 @@ class DiskUtilization:
     self.read_throughput = utilization_info["Read Throughput"]
     self.write_throughput = utilization_info["Write Throughput"]
     self.running_disk_monotasks = 0
+    self.queued_read_monotasks = 0
+    self.queued_remove_monotasks = 0
+    self.queued_write_monotasks = 0
 
 
 def is_valid_disk_name(disk_name):
@@ -82,10 +85,16 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
       # Parse the number of currently running disk monotasks for each disk.
       for running_disk_monotasks_info in json_data["Running Disk Monotasks"]:
         running_disk_monotasks = running_disk_monotasks_info["Running And Queued Monotasks"]
+        queued_read_monotasks = running_disk_monotasks_info["Queued Read Monotasks"]
+        queued_remove_monotasks = running_disk_monotasks_info["Queued Remove Monotasks"]
+        queued_write_monotasks = running_disk_monotasks_info["Queued Write Monotasks"]
         disk_name = running_disk_monotasks_info["Disk Name"].split("/")[-1]
         if disk_name in disk_to_utilization:
           disk_utilization = disk_to_utilization[disk_name]
           disk_utilization.running_disk_monotasks = running_disk_monotasks
+          disk_utilization.queued_read_monotasks = queued_read_monotasks
+          disk_utilization.queued_remove_monotasks = queued_remove_monotasks
+          disk_utilization.queued_write_monotasks = queued_write_monotasks
 
     running_macrotasks = 0
     if "Running Macrotasks" in json_data:
@@ -161,7 +170,10 @@ def plot_continuous_monitor(filename, open_graphs=False, use_gnuplot=False):
         ("{} utilization".format(disk_id), disk_util.total_utilization),
         ("{} read throughput".format(disk_id), disk_util.read_throughput),
         ("{} write throughput".format(disk_id), disk_util.write_throughput),
-        ("{} running disk monotasks".format(disk_id), disk_util.running_disk_monotasks)
+        ("{} running disk monotasks".format(disk_id), disk_util.running_disk_monotasks),
+        ("{} queued read monotasks".format(disk_id), disk_util.queued_read_monotasks),
+        ("{} queued remove monotasks".format(disk_id), disk_util.queued_remove_monotasks),
+        ("{} queued write monotasks".format(disk_id), disk_util.queued_write_monotasks)
       ])
 
     continuous_monitor_data.append(data)
