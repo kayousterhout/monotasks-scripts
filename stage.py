@@ -251,6 +251,9 @@ class Stage:
               max_disk_seconds = max(max_disk_seconds, disk_seconds)
       if use_disk_monotask_times:
         # Calcuate the ideal disk time based on the monotask times.
+        # TODO: Remote reads aren't calculated correctly: when there's a shuffle read, some of the
+        # task's data was read from remote disks, so it's not correct to count it as for the local
+        # disk.
         total_disk_monotask_millis = sum([t.disk_monotask_millis for t in tasks_for_executor])
         disk_seconds = float(total_disk_monotask_millis) / (len(disks) * 1000)
         max_disk_seconds = max(max_disk_seconds, disk_seconds)

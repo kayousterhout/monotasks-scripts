@@ -67,6 +67,7 @@ def main(argv):
     analyzer.output_job_resource_metrics(local_event_log_filename)
     analyzer.output_stage_resource_metrics(local_event_log_filename)
     analyzer.output_ideal_time_metrics(local_event_log_filename)
+    analyzer.output_ideal_time_metrics(local_event_log_filename, fix_executors = True)
     analyzer.output_compute_monotask_time_cdfs(local_event_log_filename)
 
     total_runtimes = []

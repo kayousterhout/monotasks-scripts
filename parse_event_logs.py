@@ -244,21 +244,32 @@ class Analyzer:
       for job in self.jobs.itervalues()
       for task in job.all_tasks()}
 
-  def output_ideal_time_metrics(self, filename):
+  def output_ideal_time_metrics(self, filename, fix_executors = False):
     """
     Writes a single file with the CPU, network, and disk ideal times for each stage of each job.
     Then, ideal job runtime is reported as the sum of the runtimes of the bottleneck resource in
     each of the job's stages.
     """
-    with open("{}_{}".format(filename, "ideal_time_metrics"), "w") as output:
+    if not fix_executors:
+      output_filename = "{}_{}".format(filename, "ideal_time_metrics")
+    else:
+      output_filename = "{}_ideal_time_metrics_fix_executors".format(filename)
+    with open(output_filename, "w") as output:
       output.write("Ideal times:\n\n")
       for job_id, job in self.jobs.iteritems():
         job_runtime_s = 0
         for stage_id, stage in job.stages.iteritems():
-          ideal_cpu_s, ideal_network_s, ideal_disk_s = (
+          if fix_executors:
+            ideal_cpu_s, ideal_network_s, ideal_disk_s = (
+              stage.get_ideal_times_from_metrics_fix_executors(
+                metrics.AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S,
+                num_cores_per_executor = 8))
+          else:
+            ideal_cpu_s, ideal_network_s, ideal_disk_s = (
             stage.get_ideal_times_from_metrics(
               metrics.AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S,
               num_cores_per_executor = 8))
+
           ideal_ser_deser_time_s = stage.get_ideal_ser_deser_time_s()
 
           job_runtime_s += max(ideal_cpu_s, ideal_network_s, ideal_disk_s)
