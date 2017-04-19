@@ -136,7 +136,8 @@ class Stage:
   def get_ideal_times_from_metrics(
       self,
       network_throughput_gigabits_per_executor,
-      num_cores_per_executor = 8):
+      num_cores_per_executor = 8,
+      use_disk_monotask_times = False):
     """Returns a 3-tuple containing the ideal CPU, network, and disk times (s) for this stage.
 
     The ideal times are calculated by assuming that the CPU, network, and disk tasks can be
@@ -150,6 +151,7 @@ class Stage:
     total_disk_throughput_Bps = 0
 
     executor_id_to_metrics = self.get_executor_id_to_resource_metrics()
+    disks = set()
     for executor_metrics in executor_id_to_metrics.itervalues():
       total_cpu_millis += executor_metrics.cpu_metrics.cpu_millis
 
@@ -160,6 +162,7 @@ class Stage:
         if disk_name in ["xvdb", "xvdc", "xvdf"]:
           total_disk_bytes_read_written += (disk_metrics.bytes_read + disk_metrics.bytes_written)
           total_disk_throughput_Bps += disk_metrics.effective_throughput_Bps()
+          disks.add(disk_name)
 
     num_executors = len(executor_id_to_metrics)
 
@@ -174,23 +177,27 @@ class Stage:
       total_network_bytes_os_counters = total_network_bytes_transmitted,
       total_network_throughput_Bps = total_network_throughput_Bps)
 
-    # TODO: Compute how many bytes the job thinks it read from / wrote to disk, and use the OS
-    # metrics as a sanity-check. This may require adding some info to the continuous monitor
-    # about whether the shuffle data was in-memory or on-disk.
-    if total_disk_throughput_Bps > 0:
-      ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
+    if use_disk_monotask_times:
+      ideal_disk_s = self.__get_ideal_disk_s(num_executors, len(disks))
     else:
-      ideal_disk_s = 0
-      if total_disk_bytes_read_written > 0:
-        logging.warning(
-          "Outputting 0 disk seconds because throughput while writing {} bytes was 0.".format(
-            total_disk_bytes_read_written))
+      # TODO: Compute how many bytes the job thinks it read from / wrote to disk, and use the OS
+      # metrics as a sanity-check. This may require adding some info to the continuous monitor
+      # about whether the shuffle data was in-memory or on-disk.
+      if total_disk_throughput_Bps > 0:
+        ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
+      else:
+        ideal_disk_s = 0
+        if total_disk_bytes_read_written > 0:
+          logging.warning(
+            "Outputting 0 disk seconds because throughput while writing {} bytes was 0.".format(
+              total_disk_bytes_read_written))
     return (ideal_cpu_s, ideal_network_s, ideal_disk_s)
 
   def get_ideal_times_from_metrics_fix_executors(
       self,
-      network_throughput_gigabits_per_executor:
-      num_cores_per_executor = 8):
+      network_throughput_gigabits_per_executor,
+      num_cores_per_executor = 8,
+      use_disk_monotask_times = False):
     """Returns a 3-tuple containing the ideal CPU, network, and disk time(s) for this stage.
 
     Unlike the above method, this method assumes that the assignment of tasks to worker machines
@@ -231,13 +238,22 @@ class Stage:
       # For the disks, also assume there's no flexibility in which disk data gets written to.
       # TODO: Should be calculating the disk time based on the disk monotasks, not based on the OS
       # counters.
+      disks = set()
       for disk_name, disk_metrics in executor_metrics.disk_name_to_metrics.iteritems():
         if disk_name in ["xvdb", "xvdc", "xvdf"]:
+          disks.add(disk_name)
           disk_bytes_read_written = disk_metrics.bytes_read + disk_metrics.bytes_written
-          disk_throughput = disk_metrics.effective_throughput_Bps()
-          if disk_bytes_read_written > 0 and disk_throughput > 0:
-            disk_seconds = disk_bytes_read_written / disk_throughput
-            max_disk_seconds = max(max_disk_seconds, disk_seconds)
+          if not use_disk_monotask_times:
+            # TODO: Don't use the effective throughput! This can be wrong.
+            disk_throughput = disk_metrics.effective_throughput_Bps()
+            if disk_bytes_read_written > 0 and disk_throughput > 0:
+              disk_seconds = disk_bytes_read_written / disk_throughput
+              max_disk_seconds = max(max_disk_seconds, disk_seconds)
+      if use_disk_monotask_times:
+        # Calcuate the ideal disk time based on the monotask times.
+        total_disk_monotask_millis = sum([t.disk_monotask_millis for t in tasks_for_executor])
+        disk_seconds = float(total_disk_monotask_millis) / (len(disks) * 1000)
+        max_disk_seconds = max(max_disk_seconds, disk_seconds)
 
     return (max_executor_cpu_millis / 1000., max_network_seconds, max_disk_seconds)
 
@@ -259,6 +275,18 @@ class Stage:
     else:
       total_cpu_millis = total_cpu_millis_os_counters
     return float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
+
+  def __get_ideal_disk_s(self, num_executors, disks_per_executor):
+    """ Returns the ideal disk time, based on the disk monotasks times.
+
+    This should only be used when the disk concurrency was 1 (otherwise this will overestimate
+    the disk time significantly).
+
+    TODO: Ideally we'd have the disk each monotask ran on, so we could calculate the degree to which
+    issues were because of load balancing issues across the disks.
+    """
+    total_disk_monotask_millis = sum([t.disk_monotask_millis for t in self.tasks])
+    return float(total_disk_monotask_millis) / (num_executors * disks_per_executor * 1000)
 
   def __get_ideal_network_s(self, total_network_bytes_os_counters, total_network_throughput_Bps):
     job_network_mb = self.get_network_mb()
