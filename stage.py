@@ -142,7 +142,8 @@ class Stage:
         if disk_name in ["xvdb", "xvdc", "xvdf"]:
           total_disk_bytes_read += disk_metrics.bytes_read
           disks.add(disk_name)
-    return float(total_disk_bytes_read) / (80 * 1e6 * len(executor_id_to_metrics) * len(disks)) #total_disk_throughput_Bps 
+    return (float(total_disk_bytes_read) /
+      (metrics.AWS_DISK_BYTES_PER_SECOND * len(executor_id_to_metrics) * len(disks)))
 
   def get_ideal_times_from_metrics(
       self,
@@ -195,7 +196,9 @@ class Stage:
       # metrics as a sanity-check. This may require adding some info to the continuous monitor
       # about whether the shuffle data was in-memory or on-disk.
       if total_disk_throughput_Bps > 0:
-        ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
+         # Hardcode: this is roughly the ec2 disk throughput.
+        ideal_disk_s = float(total_disk_bytes_read_written) /
+          (metrics.AWS_DISK_BYTES_PER_SECOND * num_executors * len(disks)) #total_disk_throughput_Bps
       else:
         ideal_disk_s = 0
         if total_disk_bytes_read_written > 0:
