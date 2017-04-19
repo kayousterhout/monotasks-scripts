@@ -133,6 +133,17 @@ class Stage:
     return (float(total_ser_time_millis + total_deser_time_millis) /
       (num_executors * num_cores_per_executor * 1000))
 
+  def get_disk_read_time_s(self):
+    total_disk_bytes_read = 0
+    disks = set()
+    executor_id_to_metrics = self.get_executor_id_to_resource_metrics()
+    for executor_metrics in executor_id_to_metrics.itervalues():
+      for disk_name, disk_metrics in executor_metrics.disk_name_to_metrics.iteritems():
+        if disk_name in ["xvdb", "xvdc", "xvdf"]:
+          total_disk_bytes_read += disk_metrics.bytes_read
+          disks.add(disk_name)
+    return float(total_disk_bytes_read) / (80 * 1e6 * len(executor_id_to_metrics) * len(disks)) #total_disk_throughput_Bps 
+
   def get_ideal_times_from_metrics(
       self,
       network_throughput_gigabits_per_executor,
