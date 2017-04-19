@@ -85,6 +85,7 @@ def main(argv):
     reduce_cpu_ideal_times = []
 
     for (job_id, job) in analyzer.jobs.iteritems():
+      print "******** Job %s ********" % job_id
       job_millis = 0
       job_ideal_millis = 0
       job_ideal_millis_fix_executors = 0
@@ -98,17 +99,18 @@ def main(argv):
       job_disk_millis = 0
 
       for (stage_id, stage) in job.stages.iteritems():
+        print "    *** Stage %s ***" % stage_id
         stage_ideal_times = stage.get_ideal_times_from_metrics(
           network_throughput_gbps,
           num_cores_per_executor = num_cores)
-        print "Ideal times:", stage_ideal_times
+        print "    Ideal times (CPU, net, disk):", stage_ideal_times
         stage_ideal_millis = 1000 * max(stage_ideal_times)
         stage_runtime = stage.runtime()
 
         stage_ideal_times_fix_executors = stage.get_ideal_times_from_metrics_fix_executors(
           network_throughput_gigabits_per_executor = network_throughput_gbps,
           num_cores_per_executor = num_cores)
-        print "Ideal times w/ fixed execs:", stage_ideal_times_fix_executors
+        print "    Ideal times w/ fixed execs (CPU, net, disk):", stage_ideal_times_fix_executors
         stage_ideal_millis_fix_executors = 1000 * max(stage_ideal_times_fix_executors)
 
         job_millis += stage_runtime
@@ -131,7 +133,7 @@ def main(argv):
       total_runtimes.append(job_millis)
       total_ideal_runtimes.append(job_ideal_millis)
       total_ideal_runtimes_fix_executors.append(job_ideal_millis_fix_executors)
-      print "Job CPU: {}, network: {}, disk: {}".format(
+      print "  SUMMARY: Job CPU: {}, network: {}, disk: {}".format(
         job_cpu_millis, job_network_millis, job_disk_millis)
       total_ideal_runtimes_fluid_resources.append(
         1000 * max(job_cpu_millis, job_network_millis, job_disk_millis))
