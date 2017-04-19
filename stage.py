@@ -174,9 +174,10 @@ class Stage:
       ideal_disk_s = float(total_disk_bytes_read_written) / total_disk_throughput_Bps
     else:
       ideal_disk_s = 0
-      logging.warning(
-        "Outputting 0 disk seconds because throughput while writing {} bytes was 0.".format(
-          total_disk_bytes_read_written))
+      if total_disk_bytes_read_written > 0:
+        logging.warning(
+          "Outputting 0 disk seconds because throughput while writing {} bytes was 0.".format(
+            total_disk_bytes_read_written))
     return (ideal_cpu_s, ideal_network_s, ideal_disk_s)
 
   def get_ideal_times_from_metrics_fix_executors(
@@ -204,10 +205,14 @@ class Stage:
     for executor_id, executor_metrics in executor_id_to_metrics.iteritems():
       tasks_for_executor = [t for t in self.tasks if t.executor_id == executor_id]
 
-      # Always use the monotask time (not the underlying OS counters) to compute the ideal time,
-      # for consistency with the model described in the paper.
+      # For monotasks, always use the monotask time (not the underlying OS counters) to
+      # compute the ideal time, for consistency with the model described in the paper.
       executor_cpu_millis = (sum([t.compute_monotask_millis for t in tasks_for_executor]) /
         num_cores_per_executor)
+      if executor_cpu_millis == 0:
+        # This is a Spark job, so use the CPU counters.
+        executor_cpu_millis = (float(executor_metrics.cpu_metrics.cpu_millis) /
+          num_cores_per_executor)
       max_executor_cpu_millis = max(max_executor_cpu_millis, executor_cpu_millis)
 
       # Use the bytes transmitted to calculate the network time. Could alternately use the
@@ -227,7 +232,7 @@ class Stage:
             disk_seconds = disk_bytes_read_written / disk_throughput
             max_disk_seconds = max(max_disk_seconds, disk_seconds)
 
-      return (max_executor_cpu_millis / 1000., max_network_seconds, max_disk_seconds)
+    return (max_executor_cpu_millis / 1000., max_network_seconds, max_disk_seconds)
 
   def __get_ideal_cpu_s(self, total_cpu_millis_os_counters, num_executors, num_cores_per_executor):
     # Attempt to use the CPU monotask time to compute the ideal time. If the CPU monotask time
@@ -249,22 +254,20 @@ class Stage:
     return float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
 
   def __get_ideal_network_s(self, total_network_bytes_os_counters, total_network_throughput_Bps):
-    # Compute how many bytes the job thinks it sent over the network. If that's
-    # 0, all of the network traffic was control messages (and not related to the job's
-    # completion time) so the ideal network time is 0.
     job_network_mb = self.get_network_mb()
-    if job_network_mb == 0:
-      return 0
 
     total_network_mb_transmitted = total_network_bytes_os_counters / (1024 * 1024)
     # Use the executor data about the total network data transmitted as a sanity check: this
     # should be close to how much data the job thinks it transferred over the network.
-    self.__check_times_within_error_bound(
-      base_time = job_network_mb,
-      second_time = total_network_mb_transmitted,
-      max_relative_difference = 0.1,
-      error_message = (("Executor counters say {} bytes transmitted, but job thinks {} " +
-        "was transmitted").format(total_network_mb_transmitted, job_network_mb)))
+    # When the shuffle opportunistically starts early, this will be incorrect, because the job
+    # won't think it sent any bytes over the network.
+    if (job_network_mb > 0):
+      self.__check_times_within_error_bound(
+        base_time = job_network_mb,
+        second_time = total_network_mb_transmitted,
+        max_relative_difference = 0.1,
+        error_message = (("Executor counters say {} bytes transmitted, but job thinks {} " +
+          "was transmitted").format(total_network_mb_transmitted, job_network_mb)))
      # Ultimately return what the network thinks it transmitted. This is required for the
      # calculation to work properly with the pipelined shuffle, where during the reduce
      # stage, there's a bunch of data transmitted that's not associated with a particular
