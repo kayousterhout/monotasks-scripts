@@ -34,6 +34,8 @@ AWS_M24XLARGE_MAX_NETWORK_GIGABITS_PER_S = 0.7
 # Value to use for disk throughput (in bytes per second) on AWS.
 AWS_DISK_BYTES_PER_SECOND = 80 * 1e6
 
+# Value to use for AWS flash disk throughput (in bytes per second).
+AWS_FLASH_BYTES_PER_SECOND = 260 * 1e6
 
 class CpuMetrics(object):
 
