@@ -162,6 +162,8 @@ class Stage:
     total_disk_bytes_read_written = 0
     total_disk_throughput_Bps = 0
 
+    total_read = 0
+
     executor_id_to_metrics = self.get_executor_id_to_resource_metrics()
     disks = set()
     for executor_metrics in executor_id_to_metrics.itervalues():
@@ -172,6 +174,7 @@ class Stage:
       for disk_name, disk_metrics in executor_metrics.disk_name_to_metrics.iteritems():
         # We only consider disks that are used as Spark or HDFS data directories.
         if disk_name in ["xvdb", "xvdc", "xvdf"]:
+          total_read += disk_metrics.bytes_read
           total_disk_bytes_read_written += (disk_metrics.bytes_read + disk_metrics.bytes_written)
           total_disk_throughput_Bps += disk_metrics.effective_throughput_Bps()
           disks.add(disk_name)
@@ -195,6 +198,8 @@ class Stage:
       # TODO: Compute how many bytes the job thinks it read from / wrote to disk, and use the OS
       # metrics as a sanity-check. This may require adding some info to the continuous monitor
       # about whether the shuffle data was in-memory or on-disk.
+      # print "Total disk read: ", total_read / 1.0e9, "write:", (total_disk_bytes_read_written - total_read) / 1.0e9, " network:", total_network_bytes_transmitted / 1.0e9
+      print "TOTAL DISK THROUGHPUT", total_disk_throughput_Bps
       if total_disk_throughput_Bps > 0:
          # Hardcode: this is roughly the ec2 disk throughput.
         ideal_disk_s = float(total_disk_bytes_read_written) /
@@ -292,6 +297,10 @@ class Stage:
     else:
       total_cpu_millis = total_cpu_millis_os_counters
     return float(total_cpu_millis) / (num_executors * num_cores_per_executor * 1000)
+
+  def __get_ideal_disk_read_s(self, num_executors, disks_per_executor):
+    total_disk_read_monotask_millis = sum([t.disk_read_monotask_millis for t in self.tasks])
+    return float (total_disk_read_monotask_millis) / (num_executors * disks_per_executor * 1000)
 
   def __get_ideal_disk_s(self, num_executors, disks_per_executor):
     """ Returns the ideal disk time, based on the disk monotasks times.

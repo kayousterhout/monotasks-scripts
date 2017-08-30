@@ -25,6 +25,10 @@ class Task:
     if "Disk Nanos" in task_metrics:
       self.disk_monotask_millis = task_metrics["Disk Nanos"] / 1000000.
 
+    self.disk_read_monotask_millis = 0
+    if "Disk Read Nanos" in task_metrics:
+        self.disk_read_monotask_millis = task_metrics["Disk Read Nanos"] / 1000000.
+
     self.compute_monotask_millis = 0
     if "Computation Nanos" in task_metrics:
       self.compute_monotask_millis = task_metrics["Computation Nanos"] / 1000000.

@@ -271,6 +271,7 @@ class Analyzer:
               num_cores_per_executor = 8))
 
           ideal_ser_deser_time_s = stage.get_ideal_ser_deser_time_s()
+          ideal_read_time_s = stage.get_disk_read_time_s()
 
           job_runtime_s += max(ideal_cpu_s, ideal_network_s, ideal_disk_s)
           # TODO: Right now this will be different than the number that was used to calculate
@@ -284,6 +285,7 @@ class Analyzer:
             "\tcpu (only ser / deser): {:.2f} s\n".format(ideal_ser_deser_time_s) +
             "\tnetwork: {:.2f} s ({} mb)\n".format(ideal_network_s, network_mbits) +
             "\tdisk: {:.2f} s\n".format(ideal_disk_s) +
+            "\tdisk read: {:.2f} s\n".format(ideal_read_time_s) +
             "\tactual: {:.2f} s\n".format(stage.runtime() / 1000.)
           )
         output.write("Job {} ideal runtime: {:.2f} s\n".format(job_id, job_runtime_s))
